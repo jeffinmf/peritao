@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1b2d">
+<title>Peritão</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+:root{
+  --fundo:#0f1b2d; --fundo2:#16263d; --cartao:#1c3049; --borda:#2b4463;
+  --texto:#eef4fb; --suave:#9db2cc; --destaque:#f0a63c; --destaque2:#ffbe5c;
+  --ok:#3fb27f; --erro:#e4624d; --alerta:#e8b84b;
+  --r:14px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%}
+body{
+  background:var(--fundo); color:var(--texto);
+  font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom);
+  overscroll-behavior-y:none;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+.oculto{display:none !important}
+
+/* ---------- login ---------- */
+#login{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;padding:28px 22px;gap:18px}
+.marca{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.marca svg{width:52px;height:52px;flex:none}
+.marca h1{margin:0;font-size:30px;letter-spacing:-.5px}
+.marca p{margin:2px 0 0;color:var(--suave);font-size:13px}
+.campo{display:block;margin-bottom:14px}
+.campo span{display:block;font-size:13px;color:var(--suave);margin-bottom:6px;font-weight:600}
+input,select,textarea{
+  width:100%;padding:14px;border-radius:var(--r);border:1px solid var(--borda);
+  background:var(--fundo2);outline:none;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--destaque)}
+textarea{min-height:84px;resize:vertical}
+.botao{
+  width:100%;padding:16px;border:0;border-radius:var(--r);background:var(--destaque);
+  color:#17120a;font-weight:700;font-size:17px;cursor:pointer;
+}
+.botao:disabled{opacity:.5}
+.botao.secundario{background:transparent;border:1px solid var(--borda);color:var(--texto);font-weight:600}
+.recado{padding:12px 14px;border-radius:var(--r);font-size:14px;display:none}
+.recado.mostra{display:block}
+.recado.erro{background:rgba(228,98,77,.15);border:1px solid var(--erro);color:#ffc8bf}
+.recado.ok{background:rgba(63,178,127,.15);border:1px solid var(--ok);color:#bdf0d9}
+.recado.aviso{background:rgba(232,184,75,.14);border:1px solid var(--alerta);color:#f6e2b0}
+
+/* ---------- app ---------- */
+#app{min-height:100dvh;display:flex;flex-direction:column}
+header{
+  display:flex;align-items:center;gap:10px;padding:12px 16px;
+  background:var(--fundo2);border-bottom:1px solid var(--borda);position:sticky;top:0;z-index:20
+}
+header svg{width:28px;height:28px;flex:none}
+header .quem{flex:1;min-width:0}
+header .quem b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header .quem small{color:var(--suave);font-size:12px}
+.pilula{font-size:11px;padding:4px 9px;border-radius:999px;border:1px solid var(--borda);color:var(--suave);white-space:nowrap}
+.pilula.off{border-color:var(--alerta);color:var(--alerta)}
+.pilula.fila{border-color:var(--destaque);color:var(--destaque)}
+
+main{flex:1;padding:16px 16px 96px}
+h2{margin:0 0 14px;font-size:20px}
+.cartao{background:var(--cartao);border:1px solid var(--borda);border-radius:var(--r);padding:16px;margin-bottom:14px}
+
+nav{
+  position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--fundo2);
+  border-top:1px solid var(--borda);padding-bottom:env(safe-area-inset-bottom);z-index:30
+}
+nav button{
+  flex:1;background:none;border:0;padding:11px 4px 13px;color:var(--suave);
+  font-size:11px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px
+}
+nav button svg{width:22px;height:22px}
+nav button.ativo{color:var(--destaque)}
+
+.linha{display:flex;gap:10px}
+.linha .campo{flex:1}
+.troca{display:flex;align-items:center;gap:11px;padding:13px 0;cursor:pointer}
+.troca input{width:22px;height:22px;flex:none;accent-color:var(--destaque)}
+.troca span{font-size:15px}
+
+.rodape{
+  position:fixed;left:0;right:0;bottom:60px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+  background:linear-gradient(transparent,var(--fundo) 24%);z-index:25
+}
+
+.item{
+  background:var(--cartao);border:1px solid var(--borda);border-left:4px solid var(--borda);
+  border-radius:12px;padding:13px 14px;margin-bottom:10px
+}
+.item.concluida{border-left-color:var(--ok)}
+.item.recebida,.item.em_pericia{border-left-color:var(--destaque)}
+.item.a_receber{border-left-color:var(--suave)}
+.item.pendente{border-left-color:var(--alerta);border-style:dashed}
+.item h3{margin:0 0 4px;font-size:15px;font-weight:600;line-height:1.3}
+.item .meta{font-size:12.5px;color:var(--suave);display:flex;flex-wrap:wrap;gap:4px 10px}
+.vazio{text-align:center;color:var(--suave);padding:44px 18px;font-size:14px}
+.carregando{text-align:center;color:var(--suave);padding:30px;font-size:14px}
+.num{font-variant-numeric:tabular-nums}
+.estat{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+.estat div{background:var(--cartao);border:1px solid var(--borda);border-radius:12px;padding:13px}
+.estat b{display:block;font-size:25px;line-height:1.15}
+.estat small{color:var(--suave);font-size:12px}
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<section id="login">
+  <div class="marca">
+    <svg viewBox="0 0 64 64" aria-hidden="true">
+      <circle cx="32" cy="32" r="30" fill="#16263d" stroke="#f0a63c" stroke-width="3"/>
+      <path d="M20 44V20h11c5.5 0 9 3.3 9 8.3 0 5-3.5 8.4-9 8.4h-5V44z" fill="#f0a63c"/>
+      <circle cx="42" cy="41" r="7.5" fill="none" stroke="#f0a63c" stroke-width="3"/>
+      <path d="M47.5 46.5 54 53" stroke="#f0a63c" stroke-width="3.5" stroke-linecap="round"/>
+    </svg>
+    <div>
+      <h1>Peritão</h1>
+      <p>1º NRPC Araguatins</p>
+    </div>
+  </div>
+
+  <form id="formLogin" autocomplete="on">
+    <label class="campo">
+      <span>E-mail</span>
+      <input id="email" type="email" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="seu.nome@exemplo.com">
+    </label>
+    <label class="campo">
+      <span>Senha</span>
+      <input id="senha" type="password" autocomplete="current-password" placeholder="••••••••">
+    </label>
+    <button class="botao" id="btnEntrar" type="submit">Entrar</button>
+  </form>
+
+  <div class="recado" id="recadoLogin"></div>
+  <p style="color:var(--suave);font-size:12.5px;text-align:center;margin:0">
+    Esqueceu a senha? Peça ao administrador do núcleo.
+  </p>
+</section>
+
+<!-- ================= APP ================= -->
+<section id="app" class="oculto">
+  <header>
+    <svg viewBox="0 0 64 64" aria-hidden="true">
+      <circle cx="32" cy="32" r="30" fill="#16263d" stroke="#f0a63c" stroke-width="3"/>
+      <path d="M20 44V20h11c5.5 0 9 3.3 9 8.3 0 5-3.5 8.4-9 8.4h-5V44z" fill="#f0a63c"/>
+      <circle cx="42" cy="41" r="7.5" fill="none" stroke="#f0a63c" stroke-width="3"/>
+      <path d="M47.5 46.5 54 53" stroke="#f0a63c" stroke-width="3.5" stroke-linecap="round"/>
+    </svg>
+    <div class="quem"><b id="meuNome">—</b><small id="meuPerfil"></small></div>
+    <span class="pilula" id="selo"></span>
+  </header>
+
+  <main>
+    <!-- ---- nova ocorrência ---- -->
+    <div id="telaNova">
+      <h2>Nova ocorrência</h2>
+      <div class="recado" id="recadoForm"></div>
+      <form id="form" autocomplete="off">
+        <div class="cartao">
+          <label class="campo">
+            <span>Tipo de exame *</span>
+            <select id="f_tipo" required><option value="">Selecione…</option></select>
+          </label>
+          <label class="campo">
+            <span>Município *</span>
+            <select id="f_municipio" required><option value="">Selecione…</option></select>
+          </label>
+          <label class="campo" style="margin-bottom:0">
+            <span>Local / referência</span>
+            <input id="f_local" placeholder="Povoado, rua, ponto de referência">
+          </label>
+        </div>
+
+        <div class="cartao">
+          <label class="campo">
+            <span>Órgão requisitante</span>
+            <select id="f_orgao"><option value="">Selecione…</option></select>
+          </label>
+          <div class="linha">
+            <label class="campo">
+              <span>Acionamento</span>
+              <select id="f_forma">
+                <option value="requisicao">Requisição</option>
+                <option value="telefone">Telefone</option>
+              </select>
+            </label>
+            <label class="campo">
+              <span>Data/hora</span>
+              <input id="f_acionamento" type="datetime-local">
+            </label>
+          </div>
+          <div class="linha" style="margin-bottom:0">
+            <label class="campo" style="margin-bottom:0">
+              <span>Data do fato</span>
+              <input id="f_fato" type="date">
+            </label>
+            <label class="campo" style="margin-bottom:0">
+              <span>BO</span>
+              <input id="f_bo" inputmode="numeric" placeholder="nº">
+            </label>
+          </div>
+        </div>
+
+        <div class="cartao">
+          <label class="troca">
+            <input type="checkbox" id="f_temVitima">
+            <span>Houve vítima</span>
+          </label>
+          <label class="campo oculto" id="caixaVitima" style="margin-bottom:0">
+            <span>Nome da vítima</span>
+            <input id="f_vitima">
+          </label>
+        </div>
+
+        <div class="cartao">
+          <label class="campo">
+            <span>Protocolo Galileu <small style="color:var(--suave)">— se já tiver</small></span>
+            <input id="f_protocolo" inputmode="numeric" placeholder="opcional">
+          </label>
+          <label class="campo">
+            <span>Observações</span>
+            <textarea id="f_obs" placeholder="O que for útil para o laudo"></textarea>
+          </label>
+          <button type="button" class="botao secundario" id="btnGps">Capturar coordenadas</button>
+          <div id="gpsEco" style="font-size:12.5px;color:var(--suave);margin-top:8px"></div>
+        </div>
+      </form>
+      <div class="rodape">
+        <button class="botao" id="btnSalvar">Salvar ocorrência</button>
+      </div>
+    </div>
+
+    <!-- ---- minhas ---- -->
+    <div id="telaMinhas" class="oculto">
+      <h2>Minhas ocorrências</h2>
+      <div class="estat">
+        <div><b class="num" id="e_total">—</b><small>no ano</small></div>
+        <div><b class="num" id="e_pend">—</b><small>laudo pendente</small></div>
+      </div>
+      <div id="listaMinhas"><div class="carregando">Carregando…</div></div>
+    </div>
+
+    <!-- ---- buscar ---- -->
+    <div id="telaBuscar" class="oculto">
+      <h2>Buscar</h2>
+      <label class="campo">
+        <span>Protocolo, BO, vítima ou local</span>
+        <input id="busca" placeholder="Digite e aguarde">
+      </label>
+      <div id="listaBusca"><div class="vazio">Digite algo para buscar.</div></div>
+    </div>
+
+    <!-- ---- conta ---- -->
+    <div id="telaConta" class="oculto">
+      <h2>Conta</h2>
+      <div class="cartao">
+        <div style="font-size:14px;color:var(--suave);line-height:1.8">
+          <div>Perito: <b style="color:var(--texto)" id="c_nome">—</b></div>
+          <div>Perfil: <b style="color:var(--texto)" id="c_perfil">—</b></div>
+          <div>E-mail: <b style="color:var(--texto)" id="c_email">—</b></div>
+          <div>Na fila para enviar: <b style="color:var(--texto)" id="c_fila">0</b></div>
+        </div>
+      </div>
+      <button class="botao secundario" id="btnSincronizar">Enviar pendentes agora</button>
+      <div style="height:10px"></div>
+      <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.0</p>
+    </div>
+  </main>
+
+  <nav>
+    <button data-tela="Nova" class="ativo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      Nova
+    </button>
+    <button data-tela="Minhas">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      Minhas
+    </button>
+    <button data-tela="Buscar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      Buscar
+    </button>
+    <button data-tela="Conta">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      Conta
+    </button>
+  </nav>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+const URL_SUPABASE = 'https://feqpfvyczjscxdsdmyqy.supabase.co';
+const CHAVE = 'sb_publishable_iqQEH1Q-iSFKn7nmDoFlSg_6nFqA2Xc';
+const sb = supabase.createClient(URL_SUPABASE, CHAVE, {
+  auth:{ persistSession:true, autoRefreshToken:true, storageKey:'peritao-sessao' }
+});
+
+const $ = s => document.querySelector(s);
+const CHAVE_FILA = 'peritao-fila';
+let eu = null, referencias = { tipos:[], municipios:[], orgaos:[] };
+
+/* ---------- utilidades ---------- */
+function recado(el, texto, tipo){
+  const d = $(el);
+  if(!texto){ d.className='recado'; d.textContent=''; return; }
+  d.className = 'recado mostra ' + (tipo||'erro');
+  d.textContent = texto;
+  if(tipo==='ok') setTimeout(()=>{ d.className='recado'; }, 4500);
+}
+function fila(){ try{ return JSON.parse(localStorage.getItem(CHAVE_FILA)||'[]'); }catch(e){ return []; } }
+function gravaFila(f){ try{ localStorage.setItem(CHAVE_FILA, JSON.stringify(f)); }catch(e){} }
+function dataBR(d){ if(!d) return '—'; const x=new Date(d); return isNaN(x)?'—':x.toLocaleDateString('pt-BR'); }
+function paraISO(v){ return v ? new Date(v).toISOString() : null; }
+
+function atualizaSelo(){
+  const s = $('#selo'), n = fila().length;
+  if(!navigator.onLine){ s.textContent='sem rede'; s.className='pilula off'; }
+  else if(n){ s.textContent = n + ' na fila'; s.className='pilula fila'; }
+  else { s.textContent='online'; s.className='pilula'; }
+  const cf = $('#c_fila'); if(cf) cf.textContent = n;
+}
+
+/* ---------- login ---------- */
+$('#formLogin').addEventListener('submit', async e => {
+  e.preventDefault();
+  const email = $('#email').value.trim().toLowerCase();
+  const password = $('#senha').value;
+  if(!email || !email.includes('@')) return recado('#recadoLogin','Informe um e-mail válido.');
+  if(!password) return recado('#recadoLogin','Informe a senha.');
+
+  if(!navigator.onLine) return recado('#recadoLogin','Sem conexão. O primeiro acesso precisa de rede.');
+
+  $('#btnEntrar').disabled = true;
+  recado('#recadoLogin','Entrando…','aviso');
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  $('#btnEntrar').disabled = false;
+
+  if(error){
+    const m = /invalid login|credentials/i.test(error.message)
+      ? 'E-mail ou senha incorretos.'
+      : /email not confirmed/i.test(error.message)
+        ? 'Usuário ainda não confirmado. Fale com o administrador.'
+        : error.message;
+    return recado('#recadoLogin', m);
+  }
+  recado('#recadoLogin','');
+  $('#senha').value = '';
+  iniciar();
+});
+
+/* ---------- arranque ---------- */
+async function iniciar(){
+  const { data:{ session } } = await sb.auth.getSession();
+  if(!session) return;
+
+  const { data:perito, error } = await sb
+    .from('peritos').select('id,nome,nome_completo,perfil,chefe')
+    .eq('auth_id', session.user.id).maybeSingle();
+
+  if(error || !perito){
+    recado('#recadoLogin','Seu usuário não está vinculado a nenhum perito ativo. Fale com o administrador.');
+    await sb.auth.signOut();
+    return;
+  }
+  eu = { ...perito, email: session.user.email };
+
+  $('#meuNome').textContent = eu.nome_completo || eu.nome;
+  $('#meuPerfil').textContent = (eu.chefe ? 'Chefe · ' : '') + eu.perfil;
+  $('#c_nome').textContent = eu.nome_completo || eu.nome;
+  $('#c_perfil').textContent = eu.perfil;
+  $('#c_email').textContent = eu.email;
+
+  $('#login').classList.add('oculto');
+  $('#app').classList.remove('oculto');
+
+  await carregaReferencias();
+  prepararForm();
+  atualizaSelo();
+  enviarFila();
+  carregarMinhas();
+}
+
+async function carregaReferencias(){
+  const [t,m,o] = await Promise.all([
+    sb.from('tipos_exame').select('id,nome').eq('ativo',true).order('nome'),
+    sb.from('municipios').select('id,nome').order('nome'),
+    sb.from('orgaos').select('id,sigla,nome').eq('ativo',true).order('sigla')
+  ]);
+  referencias = { tipos:t.data||[], municipios:m.data||[], orgaos:o.data||[] };
+  try{ localStorage.setItem('peritao-ref', JSON.stringify(referencias)); }catch(e){}
+  if(!referencias.tipos.length){
+    try{ referencias = JSON.parse(localStorage.getItem('peritao-ref')) || referencias; }catch(e){}
+  }
+  preenche('#f_tipo', referencias.tipos, r=>r.nome);
+  preenche('#f_municipio', referencias.municipios, r=>r.nome);
+  preenche('#f_orgao', referencias.orgaos, r=> (r.sigla? r.sigla+' — ':'') + r.nome);
+}
+function preenche(sel, lista, rotulo){
+  const el = $(sel);
+  el.innerHTML = '<option value="">Selecione…</option>';
+  lista.forEach(r=>{
+    const o = document.createElement('option');
+    o.value = r.id; o.textContent = rotulo(r);
+    el.appendChild(o);
+  });
+}
+
+/* ---------- formulário ---------- */
+function prepararForm(){
+  const agora = new Date(Date.now() - new Date().getTimezoneOffset()*60000);
+  $('#f_acionamento').value = agora.toISOString().slice(0,16);
+}
+$('#f_temVitima').onchange = e => $('#caixaVitima').classList.toggle('oculto', !e.target.checked);
+
+$('#btnGps').onclick = () => {
+  if(!navigator.geolocation) return $('#gpsEco').textContent = 'Este aparelho não informa localização.';
+  $('#gpsEco').textContent = 'Obtendo…';
+  navigator.geolocation.getCurrentPosition(
+    p => {
+      $('#btnGps').dataset.lat = p.coords.latitude.toFixed(6);
+      $('#btnGps').dataset.lng = p.coords.longitude.toFixed(6);
+      $('#gpsEco').textContent = `${p.coords.latitude.toFixed(5)}, ${p.coords.longitude.toFixed(5)} (±${Math.round(p.coords.accuracy)} m)`;
+    },
+    () => $('#gpsEco').textContent = 'Não foi possível obter a localização.',
+    { enableHighAccuracy:true, timeout:12000 }
+  );
+};
+
+$('#btnSalvar').onclick = async () => {
+  if(!$('#f_tipo').value || !$('#f_municipio').value)
+    return recado('#recadoForm','Tipo de exame e município são obrigatórios.');
+
+  const reg = {
+    protocolo: $('#f_protocolo').value.trim() || null,
+    status: 'so_no_app',
+    tipo_exame_id: +$('#f_tipo').value,
+    municipio_id: +$('#f_municipio').value,
+    orgao_acionamento_id: $('#f_orgao').value ? +$('#f_orgao').value : null,
+    forma_acionamento: $('#f_forma').value,
+    acionamento_em: paraISO($('#f_acionamento').value),
+    data_fato: $('#f_fato').value || null,
+    local_bruto: $('#f_local').value.trim() || null,
+    bo: $('#f_bo').value.trim() || null,
+    tem_vitima: $('#f_temVitima').checked,
+    nome_vitima: $('#f_temVitima').checked ? ($('#f_vitima').value.trim() || null) : null,
+    observacoes: $('#f_obs').value.trim() || null,
+    latitude: $('#btnGps').dataset.lat ? +$('#btnGps').dataset.lat : null,
+    longitude: $('#btnGps').dataset.lng ? +$('#btnGps').dataset.lng : null,
+    perito_id: eu.id,
+    criado_por: eu.id,
+    origem: 'app'
+  };
+
+  $('#btnSalvar').disabled = true;
+  const ok = await gravar(reg);
+  $('#btnSalvar').disabled = false;
+
+  if(ok === 'enviado'){
+    recado('#recadoForm','Ocorrência registrada.','ok');
+    limparForm(); carregarMinhas();
+  } else {
+    const f = fila(); f.push(reg); gravaFila(f);
+    recado('#recadoForm','Sem conexão. Guardado no aparelho — será enviado sozinho.','aviso');
+    limparForm();
+  }
+  atualizaSelo();
+};
+
+async function gravar(reg){
+  if(!navigator.onLine) return 'fila';
+  try{
+    const { error } = await sb.from('ocorrencias').insert(reg);
+    return error ? 'fila' : 'enviado';
+  }catch(e){ return 'fila'; }
+}
+
+function limparForm(){
+  ['f_protocolo','f_local','f_bo','f_vitima','f_obs','f_fato'].forEach(id=>$('#'+id).value='');
+  $('#f_tipo').value=''; $('#f_municipio').value=''; $('#f_orgao').value='';
+  $('#f_temVitima').checked=false; $('#caixaVitima').classList.add('oculto');
+  delete $('#btnGps').dataset.lat; delete $('#btnGps').dataset.lng;
+  $('#gpsEco').textContent=''; prepararForm();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+async function enviarFila(){
+  const f = fila();
+  if(!f.length || !navigator.onLine) return;
+  const restantes = [];
+  for(const reg of f){
+    const r = await gravar(reg);
+    if(r !== 'enviado') restantes.push(reg);
+  }
+  gravaFila(restantes);
+  atualizaSelo();
+  if(restantes.length < f.length) carregarMinhas();
+}
+window.addEventListener('online', ()=>{ atualizaSelo(); enviarFila(); });
+window.addEventListener('offline', atualizaSelo);
+$('#btnSincronizar').onclick = async ()=>{
+  await enviarFila();
+  recado('#recadoForm', fila().length ? 'Ainda há pendentes.' : 'Tudo enviado.', fila().length?'aviso':'ok');
+};
+
+/* ---------- listas ---------- */
+function cartaoOcorrencia(o, pendente){
+  const tipo = o.tipos_exame?.nome || o.tipo_exame_bruto || 'Exame';
+  const mun  = o.municipios?.nome || '';
+  const laudo = o.laudos && o.laudos.length ? o.laudos[0] : null;
+  const classe = pendente ? 'pendente' : (o.status||'');
+  const partes = [];
+  if(o.protocolo) partes.push('nº ' + o.protocolo);
+  if(mun) partes.push(mun);
+  partes.push(dataBR(o.data_fato || o.acionamento_em));
+  if(laudo && laudo.entregue) partes.push('laudo ' + (laudo.numero||'entregue'));
+  else if(!pendente) partes.push('laudo pendente');
+  if(pendente) partes.push('aguardando envio');
+  return `<div class="item ${classe}">
+    <h3>${escapar(tipo)}</h3>
+    <div class="meta">${partes.map(p=>`<span>${escapar(p)}</span>`).join('')}</div>
+  </div>`;
+}
+function escapar(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+async function carregarMinhas(){
+  const alvo = $('#listaMinhas');
+  const pend = fila().map(r=>{
+    const t = referencias.tipos.find(x=>x.id===r.tipo_exame_id);
+    const m = referencias.municipios.find(x=>x.id===r.municipio_id);
+    return { ...r, tipos_exame:t, municipios:m };
+  });
+  if(!navigator.onLine){
+    alvo.innerHTML = pend.map(o=>cartaoOcorrencia(o,true)).join('') ||
+      '<div class="vazio">Sem rede. Nada guardado no aparelho.</div>';
+    return;
+  }
+  alvo.innerHTML = '<div class="carregando">Carregando…</div>';
+  const ano = new Date().getFullYear();
+  const { data, error } = await sb.from('ocorrencias')
+    .select('id,protocolo,status,data_fato,acionamento_em,tipo_exame_bruto,tipos_exame(nome),municipios(nome),laudos(entregue,numero)')
+    .eq('perito_id', eu.id)
+    .gte('acionamento_em', ano+'-01-01')
+    .order('acionamento_em',{ascending:false})
+    .limit(200);
+
+  if(error){ alvo.innerHTML = '<div class="vazio">Não foi possível carregar.</div>'; return; }
+  const lista = data||[];
+  $('#e_total').textContent = lista.length + (pend.length? '+'+pend.length : '');
+  $('#e_pend').textContent = lista.filter(o=>!(o.laudos&&o.laudos[0]&&o.laudos[0].entregue)).length;
+  alvo.innerHTML = (pend.map(o=>cartaoOcorrencia(o,true)).join('') + lista.map(o=>cartaoOcorrencia(o,false)).join(''))
+    || '<div class="vazio">Nenhuma ocorrência sua neste ano.</div>';
+}
+
+let tmrBusca;
+$('#busca').addEventListener('input', e=>{
+  clearTimeout(tmrBusca);
+  const termo = e.target.value.trim();
+  if(termo.length < 2){ $('#listaBusca').innerHTML='<div class="vazio">Digite algo para buscar.</div>'; return; }
+  tmrBusca = setTimeout(()=>buscar(termo), 450);
+});
+async function buscar(termo){
+  const alvo = $('#listaBusca');
+  if(!navigator.onLine) return alvo.innerHTML='<div class="vazio">Busca precisa de conexão.</div>';
+  alvo.innerHTML = '<div class="carregando">Buscando…</div>';
+  const t = termo.replace(/[%,()]/g,'');
+  const { data, error } = await sb.from('ocorrencias')
+    .select('id,protocolo,status,data_fato,acionamento_em,tipo_exame_bruto,tipos_exame(nome),municipios(nome),laudos(entregue,numero)')
+    .or(`protocolo.ilike.%${t}%,bo.ilike.%${t}%,nome_vitima.ilike.%${t}%,local_bruto.ilike.%${t}%`)
+    .order('acionamento_em',{ascending:false}).limit(60);
+  if(error){ alvo.innerHTML='<div class="vazio">Não foi possível buscar.</div>'; return; }
+  alvo.innerHTML = (data||[]).map(o=>cartaoOcorrencia(o,false)).join('') || '<div class="vazio">Nada encontrado.</div>';
+}
+
+/* ---------- navegação ---------- */
+document.querySelectorAll('nav button').forEach(b=>{
+  b.onclick = ()=>{
+    document.querySelectorAll('nav button').forEach(x=>x.classList.remove('ativo'));
+    b.classList.add('ativo');
+    ['Nova','Minhas','Buscar','Conta'].forEach(t=>
+      $('#tela'+t).classList.toggle('oculto', t!==b.dataset.tela));
+    $('.rodape').classList.toggle('oculto', b.dataset.tela!=='Nova');
+    if(b.dataset.tela==='Minhas') carregarMinhas();
+    window.scrollTo(0,0);
+  };
+});
+
+$('#btnSair').onclick = async ()=>{
+  if(fila().length && !window.confirm('Há registros ainda não enviados. Sair mesmo assim?')) return;
+  await sb.auth.signOut();
+  location.reload();
+};
+
+/* ---------- service worker ---------- */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+
+iniciar();
+</script>
+</body>
+</html>
