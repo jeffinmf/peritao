@@ -320,7 +320,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.2</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.3</p>
     </div>
   </main>
 
@@ -440,7 +440,7 @@ async function iniciar(){
 async function carregaReferencias(){
   const [t,m,o] = await Promise.all([
     sb.from('tipos_exame').select('id,nome').eq('ativo',true).order('nome'),
-    sb.from('municipios').select('id,nome').order('nome'),
+    sb.from('municipios').select('id,nome').eq('ativo',true).order('nome'),
     sb.from('orgaos').select('id,sigla,nome').eq('ativo',true).order('sigla')
   ]);
   referencias = { tipos:t.data||[], municipios:m.data||[], orgaos:o.data||[] };
