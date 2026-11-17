@@ -325,7 +325,19 @@ nav button.ativo{color:var(--destaque)}
           <div>Na fila para enviar: <b style="color:var(--texto)" id="c_fila">0</b></div>
         </div>
       </div>
-      <button class="botao secundario" id="btnSincronizar">Enviar pendentes agora</button>
+      <div class="cartao">
+        <div style="font-size:14px;color:var(--suave);line-height:1.6">
+          Guardados no aparelho, ainda não enviados ao Peritão:
+          <b style="color:var(--texto)" id="c_fila2">0</b>
+        </div>
+        <div style="font-size:12.5px;color:var(--suave);margin-top:6px;line-height:1.5">
+          São os registros feitos sem rede. Sobem sozinhos quando a conexão volta.
+          Isto não envia nada ao Galileu.
+        </div>
+        <div style="height:10px"></div>
+        <button class="botao secundario" id="btnSincronizar">Enviar agora ao Peritão</button>
+        <div id="recadoSinc" class="recado"></div>
+      </div>
 
       <div class="cartao" id="cartaoLimpeza" style="margin-top:14px">
         <div style="font-size:14px;color:var(--suave);line-height:1.6">
@@ -338,7 +350,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.4</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.5</p>
     </div>
   </main>
 
@@ -393,6 +405,7 @@ function atualizaSelo(){
   else if(n){ s.textContent = n + ' na fila'; s.className='pilula fila'; }
   else { s.textContent='online'; s.className='pilula'; }
   const cf = $('#c_fila'); if(cf) cf.textContent = n;
+  const cf2 = $('#c_fila2'); if(cf2) cf2.textContent = n;
 }
 
 /* ---------- login ---------- */
@@ -629,8 +642,19 @@ async function enviarFila(){
 window.addEventListener('online', ()=>{ atualizaSelo(); enviarFila(); });
 window.addEventListener('offline', atualizaSelo);
 $('#btnSincronizar').onclick = async ()=>{
+  const antes = fila().length;
+  if(!antes) return recado('#recadoSinc','Não há nada guardado no aparelho.','ok');
+  if(!navigator.onLine) return recado('#recadoSinc','Sem conexão. Tente quando houver rede.','aviso');
+
+  $('#btnSincronizar').disabled = true;
+  recado('#recadoSinc','Enviando…','aviso');
   await enviarFila();
-  recado('#recadoForm', fila().length ? 'Ainda há pendentes.' : 'Tudo enviado.', fila().length?'aviso':'ok');
+  $('#btnSincronizar').disabled = false;
+
+  const resta = fila().length;
+  const enviados = antes - resta;
+  if(!resta) recado('#recadoSinc', enviados + ' registro(s) enviado(s) ao Peritão.','ok');
+  else recado('#recadoSinc', enviados + ' enviado(s), ' + resta + ' ainda guardado(s). Tente de novo.','aviso');
 };
 
 /* ---------- listas ---------- */
