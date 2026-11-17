@@ -47,6 +47,11 @@ textarea{min-height:84px;resize:vertical}
 }
 .botao:disabled{opacity:.5}
 .botao.secundario{background:transparent;border:1px solid var(--borda);color:var(--texto);font-weight:600}
+.selo-teste{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;
+  font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  background:rgba(232,184,75,.18);border:1px solid var(--alerta);color:#f6e2b0;vertical-align:middle}
+.item.eh-teste{border-left:3px solid var(--alerta)}
+#cartaoTeste.ligado{border-color:var(--alerta);box-shadow:0 0 0 1px var(--alerta) inset}
 .recado{padding:12px 14px;border-radius:var(--r);font-size:14px;display:none}
 .recado.mostra{display:block}
 .recado.erro{background:rgba(228,98,77,.15);border:1px solid var(--erro);color:#ffc8bf}
@@ -234,6 +239,16 @@ nav button.ativo{color:var(--destaque)}
           <button type="button" class="botao secundario" id="btnGps">Capturar coordenadas</button>
           <div id="gpsEco" style="font-size:12.5px;color:var(--suave);margin-top:8px"></div>
         </div>
+
+        <div class="cartao" id="cartaoTeste">
+          <label class="troca">
+            <input type="checkbox" id="f_teste">
+            <span>Registro de teste</span>
+          </label>
+          <div style="font-size:12.5px;color:var(--suave);margin-top:6px;line-height:1.5">
+            Não entra na estatística do núcleo. Pode apagar depois na aba Conta.
+          </div>
+        </div>
       </form>
       <div class="rodape">
         <button class="botao" id="btnSalvar">Salvar ocorrência</button>
@@ -272,9 +287,19 @@ nav button.ativo{color:var(--destaque)}
         </div>
       </div>
       <button class="botao secundario" id="btnSincronizar">Enviar pendentes agora</button>
+
+      <div class="cartao" id="cartaoLimpeza" style="margin-top:14px">
+        <div style="font-size:14px;color:var(--suave);line-height:1.6">
+          Registros de teste seus no banco: <b style="color:var(--texto)" id="c_testes">—</b>
+        </div>
+        <div style="height:10px"></div>
+        <button class="botao secundario" id="btnLimparTeste">Apagar meus registros de teste</button>
+        <div id="recadoLimpeza" class="recado"></div>
+      </div>
+
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.0</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.1</p>
     </div>
   </main>
 
@@ -459,7 +484,8 @@ $('#btnSalvar').onclick = async () => {
     longitude: $('#btnGps').dataset.lng ? +$('#btnGps').dataset.lng : null,
     perito_id: eu.id,
     criado_por: eu.id,
-    origem: 'app'
+    origem: 'app',
+    teste: $('#f_teste').checked
   };
 
   $('#btnSalvar').disabled = true;
@@ -467,7 +493,7 @@ $('#btnSalvar').onclick = async () => {
   $('#btnSalvar').disabled = false;
 
   if(ok === 'enviado'){
-    recado('#recadoForm','Ocorrência registrada.','ok');
+    recado('#recadoForm', reg.teste ? 'Registro de teste salvo.' : 'Ocorrência registrada.','ok');
     limparForm(); carregarMinhas();
   } else {
     const f = fila(); f.push(reg); gravaFila(f);
@@ -489,6 +515,7 @@ function limparForm(){
   ['f_protocolo','f_local','f_bo','f_vitima','f_obs','f_fato'].forEach(id=>$('#'+id).value='');
   $('#f_tipo').value=''; $('#f_municipio').value=''; $('#f_orgao').value='';
   $('#f_temVitima').checked=false; $('#caixaVitima').classList.add('oculto');
+  $('#f_teste').checked=false; $('#cartaoTeste').classList.remove('ligado');
   delete $('#btnGps').dataset.lat; delete $('#btnGps').dataset.lng;
   $('#gpsEco').textContent=''; prepararForm();
   window.scrollTo({top:0,behavior:'smooth'});
@@ -526,8 +553,9 @@ function cartaoOcorrencia(o, pendente){
   if(laudo && laudo.entregue) partes.push('laudo ' + (laudo.numero||'entregue'));
   else if(!pendente) partes.push('laudo pendente');
   if(pendente) partes.push('aguardando envio');
-  return `<div class="item ${classe}">
-    <h3>${escapar(tipo)}</h3>
+  const selo = o.teste ? '<span class="selo-teste">teste</span>' : '';
+  return `<div class="item ${classe}${o.teste?' eh-teste':''}">
+    <h3>${escapar(tipo)}${selo}</h3>
     <div class="meta">${partes.map(p=>`<span>${escapar(p)}</span>`).join('')}</div>
   </div>`;
 }
@@ -548,7 +576,7 @@ async function carregarMinhas(){
   alvo.innerHTML = '<div class="carregando">Carregando…</div>';
   const ano = new Date().getFullYear();
   const { data, error } = await sb.from('ocorrencias')
-    .select('id,protocolo,status,data_fato,acionamento_em,tipo_exame_bruto,tipos_exame(nome),municipios(nome),laudos(entregue,numero)')
+    .select('id,protocolo,status,teste,data_fato,acionamento_em,tipo_exame_bruto,tipos_exame(nome),municipios(nome),laudos(entregue,numero)')
     .eq('perito_id', eu.id)
     .gte('acionamento_em', ano+'-01-01')
     .order('acionamento_em',{ascending:false})
@@ -575,7 +603,7 @@ async function buscar(termo){
   alvo.innerHTML = '<div class="carregando">Buscando…</div>';
   const t = termo.replace(/[%,()]/g,'');
   const { data, error } = await sb.from('ocorrencias')
-    .select('id,protocolo,status,data_fato,acionamento_em,tipo_exame_bruto,tipos_exame(nome),municipios(nome),laudos(entregue,numero)')
+    .select('id,protocolo,status,teste,data_fato,acionamento_em,tipo_exame_bruto,tipos_exame(nome),municipios(nome),laudos(entregue,numero)')
     .or(`protocolo.ilike.%${t}%,bo.ilike.%${t}%,nome_vitima.ilike.%${t}%,local_bruto.ilike.%${t}%`)
     .order('acionamento_em',{ascending:false}).limit(60);
   if(error){ alvo.innerHTML='<div class="vazio">Não foi possível buscar.</div>'; return; }
@@ -591,9 +619,44 @@ document.querySelectorAll('nav button').forEach(b=>{
       $('#tela'+t).classList.toggle('oculto', t!==b.dataset.tela));
     $('.rodape').classList.toggle('oculto', b.dataset.tela!=='Nova');
     if(b.dataset.tela==='Minhas') carregarMinhas();
+    if(b.dataset.tela==='Conta') contarTestes();
     window.scrollTo(0,0);
   };
 });
+
+/* ---------- registros de teste ---------- */
+async function contarTestes(){
+  const alvo = $('#c_testes');
+  if(!alvo) return;
+  if(!navigator.onLine){ alvo.textContent='—'; return; }
+  const { count, error } = await sb.from('ocorrencias')
+    .select('id', { count:'exact', head:true })
+    .eq('perito_id', eu.id).eq('teste', true);
+  alvo.textContent = error ? '—' : (count || 0);
+}
+
+$('#btnLimparTeste').onclick = async ()=>{
+  recado('#recadoLimpeza','');
+  if(!navigator.onLine) return recado('#recadoLimpeza','Precisa de conexão.');
+
+  const { count } = await sb.from('ocorrencias')
+    .select('id', { count:'exact', head:true })
+    .eq('perito_id', eu.id).eq('teste', true);
+
+  if(!count) return recado('#recadoLimpeza','Você não tem registros de teste.','aviso');
+  if(!window.confirm('Apagar '+count+' registro(s) de teste? Isso não pode ser desfeito. Ocorrências reais não são afetadas.')) return;
+
+  $('#btnLimparTeste').disabled = true;
+  const { error } = await sb.from('ocorrencias').delete()
+    .eq('perito_id', eu.id).eq('teste', true);
+  $('#btnLimparTeste').disabled = false;
+
+  if(error){ recado('#recadoLimpeza','Não foi possível apagar: '+error.message); return; }
+  recado('#recadoLimpeza', count+' registro(s) de teste apagado(s).','ok');
+  contarTestes(); carregarMinhas();
+};
+
+$('#f_teste').onchange = e => $('#cartaoTeste').classList.toggle('ligado', e.target.checked);
 
 $('#btnSair').onclick = async ()=>{
   if(fila().length && !window.confirm('Há registros ainda não enviados. Sair mesmo assim?')) return;
