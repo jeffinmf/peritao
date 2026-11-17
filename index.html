@@ -180,23 +180,37 @@ nav button.ativo{color:var(--destaque)}
             <span>Município *</span>
             <select id="f_municipio" required><option value="">Selecione…</option></select>
           </label>
-          <label class="campo" style="margin-bottom:0">
-            <span>Local / referência</span>
-            <input id="f_local" placeholder="Povoado, rua, ponto de referência">
+          <label class="campo">
+            <span>Endereço</span>
+            <input id="f_endereco" placeholder="Rua, avenida, rodovia, povoado">
           </label>
+          <div class="linha" style="margin-bottom:0">
+            <label class="campo" style="margin-bottom:0">
+              <span>Nº</span>
+              <input id="f_numero" placeholder="s/n">
+            </label>
+            <label class="campo" style="margin-bottom:0">
+              <span>Complemento</span>
+              <input id="f_complemento" placeholder="Ponto de referência">
+            </label>
+          </div>
         </div>
 
         <div class="cartao">
           <label class="campo">
-            <span>Órgão requisitante</span>
+            <span>Órgão que acionou</span>
             <select id="f_orgao"><option value="">Selecione…</option></select>
+          </label>
+          <label class="campo">
+            <span>Delegacia responsável *</span>
+            <select id="f_delegacia" required><option value="">Selecione…</option></select>
           </label>
           <div class="linha">
             <label class="campo">
               <span>Acionamento</span>
               <select id="f_forma">
-                <option value="requisicao">Requisição</option>
                 <option value="telefone">Telefone</option>
+                <option value="requisicao">Requisição</option>
               </select>
             </label>
             <label class="campo">
@@ -206,13 +220,17 @@ nav button.ativo{color:var(--destaque)}
           </div>
           <div class="linha" style="margin-bottom:0">
             <label class="campo" style="margin-bottom:0">
-              <span>Data do fato</span>
-              <input id="f_fato" type="date">
+              <span>Data/hora do fato</span>
+              <input id="f_fato" type="datetime-local">
             </label>
             <label class="campo" style="margin-bottom:0">
               <span>BO</span>
               <input id="f_bo" inputmode="numeric" placeholder="nº">
             </label>
+          </div>
+          <div id="avisoRequisicao" class="oculto" style="font-size:12.5px;color:#f6e2b0;background:rgba(232,184,75,.14);border:1px solid var(--alerta);border-radius:var(--r);padding:10px 12px;margin-top:12px;line-height:1.5">
+            Por requisição o Galileu exige a requisição já cadastrada pelo administrativo.
+            Este registro fica no Peritão, mas não sobe sozinho.
           </div>
         </div>
 
@@ -320,7 +338,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.3</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.4</p>
     </div>
   </main>
 
@@ -441,16 +459,19 @@ async function carregaReferencias(){
   const [t,m,o] = await Promise.all([
     sb.from('tipos_exame').select('id,nome').eq('ativo',true).order('nome'),
     sb.from('municipios').select('id,nome').eq('ativo',true).order('nome'),
-    sb.from('orgaos').select('id,sigla,nome').eq('ativo',true).order('sigla')
+    sb.from('orgaos').select('id,sigla,nome,tipo').eq('ativo',true).order('nome')
   ]);
   referencias = { tipos:t.data||[], municipios:m.data||[], orgaos:o.data||[] };
   try{ localStorage.setItem('peritao-ref', JSON.stringify(referencias)); }catch(e){}
   if(!referencias.tipos.length){
     try{ referencias = JSON.parse(localStorage.getItem('peritao-ref')) || referencias; }catch(e){}
   }
+  const rotuloOrgao = r => (r.sigla ? r.sigla+' — ' : '') + r.nome;
   preenche('#f_tipo', referencias.tipos, r=>r.nome);
   preenche('#f_municipio', referencias.municipios, r=>r.nome);
-  preenche('#f_orgao', referencias.orgaos, r=> (r.sigla? r.sigla+' — ':'') + r.nome);
+  preenche('#f_orgao', referencias.orgaos, rotuloOrgao);
+  // Delegacia circunscricional: só polícia civil.
+  preenche('#f_delegacia', referencias.orgaos.filter(r=>r.tipo==='civil'), rotuloOrgao);
 }
 function preenche(sel, lista, rotulo){
   const el = $(sel);
@@ -471,6 +492,16 @@ function prepararForm(){
   mostrarDuracao();
 }
 $('#f_temVitima').onchange = e => $('#caixaVitima').classList.toggle('oculto', !e.target.checked);
+
+/* Se quem acionou é delegacia civil, ela costuma ser a responsável também.
+   Só preenche quando o perito ainda não escolheu nada, para não sobrescrever. */
+$('#f_orgao').onchange = e => {
+  const o = referencias.orgaos.find(x => String(x.id) === e.target.value);
+  if(o && o.tipo === 'civil' && !$('#f_delegacia').value) $('#f_delegacia').value = o.id;
+};
+
+$('#f_forma').onchange = e =>
+  $('#avisoRequisicao').classList.toggle('oculto', e.target.value !== 'requisicao');
 
 /* ---------- horários do atendimento ---------- */
 $('#btnAgoraChegada').onclick = ()=>{ $('#f_atendimento').value = agoraLocal(); mostrarDuracao(); };
@@ -506,6 +537,8 @@ $('#btnGps').onclick = () => {
 $('#btnSalvar').onclick = async () => {
   if(!$('#f_tipo').value || !$('#f_municipio').value)
     return recado('#recadoForm','Tipo de exame e município são obrigatórios.');
+  if(!$('#f_delegacia').value)
+    return recado('#recadoForm','Informe a delegacia responsável pela circunscrição. O Galileu exige.');
 
   const chegada = $('#f_atendimento').value, saida = $('#f_liberacao').value;
   if(!chegada || !saida)
@@ -513,18 +546,26 @@ $('#btnSalvar').onclick = async () => {
   if(new Date(saida) < new Date(chegada))
     return recado('#recadoForm','A hora de saída está antes da hora de chegada.');
 
+  const endereco = $('#f_endereco').value.trim();
+  const numero = $('#f_numero').value.trim();
+  const complemento = $('#f_complemento').value.trim();
+
   const reg = {
     protocolo: $('#f_protocolo').value.trim() || null,
     status: 'so_no_app',
     tipo_exame_id: +$('#f_tipo').value,
     municipio_id: +$('#f_municipio').value,
     orgao_acionamento_id: $('#f_orgao').value ? +$('#f_orgao').value : null,
+    delegacia_id: +$('#f_delegacia').value,
     forma_acionamento: $('#f_forma').value,
     acionamento_em: paraISO($('#f_acionamento').value),
     atendimento_em: paraISO(chegada),
     liberacao_em: paraISO(saida),
-    data_fato: $('#f_fato').value || null,
-    local_bruto: $('#f_local').value.trim() || null,
+    data_fato: paraISO($('#f_fato').value),
+    endereco: endereco || null,
+    numero: numero || null,
+    complemento: complemento || null,
+    local_bruto: [endereco, numero, complemento].filter(Boolean).join(', ') || null,
     bo: $('#f_bo').value.trim() || null,
     tem_vitima: $('#f_temVitima').checked,
     nome_vitima: $('#f_temVitima').checked ? ($('#f_vitima').value.trim() || null) : null,
@@ -561,9 +602,11 @@ async function gravar(reg){
 }
 
 function limparForm(){
-  ['f_protocolo','f_local','f_bo','f_vitima','f_obs','f_fato','f_atendimento','f_liberacao']
-    .forEach(id=>$('#'+id).value='');
-  $('#f_tipo').value=''; $('#f_municipio').value=''; $('#f_orgao').value='';
+  ['f_protocolo','f_endereco','f_numero','f_complemento','f_bo','f_vitima','f_obs',
+   'f_fato','f_atendimento','f_liberacao'].forEach(id=>$('#'+id).value='');
+  $('#f_tipo').value=''; $('#f_municipio').value='';
+  $('#f_orgao').value=''; $('#f_delegacia').value='';
+  $('#f_forma').value='telefone'; $('#avisoRequisicao').classList.add('oculto');
   $('#f_temVitima').checked=false; $('#caixaVitima').classList.add('oculto');
   $('#f_teste').checked=false; $('#cartaoTeste').classList.remove('ligado');
   delete $('#btnGps').dataset.lat; delete $('#btnGps').dataset.lng;
