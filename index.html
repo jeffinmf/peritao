@@ -217,6 +217,27 @@ nav button.ativo{color:var(--destaque)}
         </div>
 
         <div class="cartao">
+          <div style="font-size:12.5px;color:var(--suave);margin-bottom:12px;line-height:1.5">
+            Horários do atendimento — o Galileu exige os dois para o cadastro.
+          </div>
+          <div class="linha">
+            <label class="campo">
+              <span>Cheguei ao local *</span>
+              <input id="f_atendimento" type="datetime-local">
+            </label>
+            <label class="campo">
+              <span>Deixei o local *</span>
+              <input id="f_liberacao" type="datetime-local">
+            </label>
+          </div>
+          <div class="linha" style="margin-bottom:0">
+            <button type="button" class="botao secundario" id="btnAgoraChegada">Cheguei agora</button>
+            <button type="button" class="botao secundario" id="btnAgoraSaida">Saí agora</button>
+          </div>
+          <div id="duracaoEco" style="font-size:12.5px;color:var(--suave);margin-top:10px"></div>
+        </div>
+
+        <div class="cartao">
           <label class="troca">
             <input type="checkbox" id="f_temVitima">
             <span>Houve vítima</span>
@@ -299,7 +320,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.1</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.2</p>
     </div>
   </main>
 
@@ -442,11 +463,31 @@ function preenche(sel, lista, rotulo){
 }
 
 /* ---------- formulário ---------- */
+function agoraLocal(){
+  return new Date(Date.now() - new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
+}
 function prepararForm(){
-  const agora = new Date(Date.now() - new Date().getTimezoneOffset()*60000);
-  $('#f_acionamento').value = agora.toISOString().slice(0,16);
+  $('#f_acionamento').value = agoraLocal();
+  mostrarDuracao();
 }
 $('#f_temVitima').onchange = e => $('#caixaVitima').classList.toggle('oculto', !e.target.checked);
+
+/* ---------- horários do atendimento ---------- */
+$('#btnAgoraChegada').onclick = ()=>{ $('#f_atendimento').value = agoraLocal(); mostrarDuracao(); };
+$('#btnAgoraSaida').onclick   = ()=>{ $('#f_liberacao').value  = agoraLocal(); mostrarDuracao(); };
+$('#f_atendimento').onchange = mostrarDuracao;
+$('#f_liberacao').onchange   = mostrarDuracao;
+
+function mostrarDuracao(){
+  const eco = $('#duracaoEco');
+  const a = $('#f_atendimento').value, b = $('#f_liberacao').value;
+  if(!a || !b){ eco.textContent=''; eco.style.color='var(--suave)'; return; }
+  const min = Math.round((new Date(b) - new Date(a))/60000);
+  if(min < 0){ eco.textContent = 'A saída está antes da chegada.'; eco.style.color='var(--erro)'; return; }
+  const h = Math.floor(min/60), m = min%60;
+  eco.style.color='var(--suave)';
+  eco.textContent = 'No local: ' + (h? h+'h'+(m?' '+m+'min':'') : m+'min') + '.';
+}
 
 $('#btnGps').onclick = () => {
   if(!navigator.geolocation) return $('#gpsEco').textContent = 'Este aparelho não informa localização.';
@@ -466,6 +507,12 @@ $('#btnSalvar').onclick = async () => {
   if(!$('#f_tipo').value || !$('#f_municipio').value)
     return recado('#recadoForm','Tipo de exame e município são obrigatórios.');
 
+  const chegada = $('#f_atendimento').value, saida = $('#f_liberacao').value;
+  if(!chegada || !saida)
+    return recado('#recadoForm','Informe a hora em que chegou e em que deixou o local. Sem os dois o Galileu não aceita o cadastro.');
+  if(new Date(saida) < new Date(chegada))
+    return recado('#recadoForm','A hora de saída está antes da hora de chegada.');
+
   const reg = {
     protocolo: $('#f_protocolo').value.trim() || null,
     status: 'so_no_app',
@@ -474,6 +521,8 @@ $('#btnSalvar').onclick = async () => {
     orgao_acionamento_id: $('#f_orgao').value ? +$('#f_orgao').value : null,
     forma_acionamento: $('#f_forma').value,
     acionamento_em: paraISO($('#f_acionamento').value),
+    atendimento_em: paraISO(chegada),
+    liberacao_em: paraISO(saida),
     data_fato: $('#f_fato').value || null,
     local_bruto: $('#f_local').value.trim() || null,
     bo: $('#f_bo').value.trim() || null,
@@ -512,7 +561,8 @@ async function gravar(reg){
 }
 
 function limparForm(){
-  ['f_protocolo','f_local','f_bo','f_vitima','f_obs','f_fato'].forEach(id=>$('#'+id).value='');
+  ['f_protocolo','f_local','f_bo','f_vitima','f_obs','f_fato','f_atendimento','f_liberacao']
+    .forEach(id=>$('#'+id).value='');
   $('#f_tipo').value=''; $('#f_municipio').value=''; $('#f_orgao').value='';
   $('#f_temVitima').checked=false; $('#caixaVitima').classList.add('oculto');
   $('#f_teste').checked=false; $('#cartaoTeste').classList.remove('ligado');
@@ -549,7 +599,7 @@ function cartaoOcorrencia(o, pendente){
   const partes = [];
   if(o.protocolo) partes.push('nº ' + o.protocolo);
   if(mun) partes.push(mun);
-  partes.push(dataBR(o.data_fato || o.acionamento_em));
+  partes.push(dataBR(o.ordem_em || o.data_fato || o.acionamento_em));
   if(laudo && laudo.entregue) partes.push('laudo ' + (laudo.numero||'entregue'));
   else if(!pendente) partes.push('laudo pendente');
   if(pendente) partes.push('aguardando envio');
@@ -575,17 +625,21 @@ async function carregarMinhas(){
   }
   alvo.innerHTML = '<div class="carregando">Carregando…</div>';
   const ano = new Date().getFullYear();
-  const { data, error } = await sb.from('ocorrencias')
-    .select('id,protocolo,status,teste,data_fato,acionamento_em,tipo_exame_bruto,tipos_exame(nome),municipios(nome),laudos(entregue,numero)')
+  const { data, error, count } = await sb.from('ocorrencias')
+    .select('id,protocolo,status,teste,ordem_em,data_fato,acionamento_em,tipo_exame_bruto,tipos_exame(nome),municipios(nome),laudos(entregue,numero)',
+            { count:'exact' })
     .eq('perito_id', eu.id)
-    .gte('acionamento_em', ano+'-01-01')
-    .order('acionamento_em',{ascending:false})
-    .limit(200);
+    .eq('ano', ano)
+    .order('ordem_em',{ascending:false, nullsFirst:false})
+    .limit(500);
 
   if(error){ alvo.innerHTML = '<div class="vazio">Não foi possível carregar.</div>'; return; }
   const lista = data||[];
-  $('#e_total').textContent = lista.length + (pend.length? '+'+pend.length : '');
-  $('#e_pend').textContent = lista.filter(o=>!(o.laudos&&o.laudos[0]&&o.laudos[0].entregue)).length;
+  const reais = lista.filter(o=>!o.teste);
+  const total = (count==null ? reais.length : count) - (lista.length - reais.length);
+  $('#e_total').textContent = total + (pend.length? '+'+pend.length : '');
+  $('#e_pend').textContent = reais.filter(o=>!(o.laudos&&o.laudos[0]&&o.laudos[0].entregue)).length
+    + (lista.length >= 500 ? '+' : '');
   alvo.innerHTML = (pend.map(o=>cartaoOcorrencia(o,true)).join('') + lista.map(o=>cartaoOcorrencia(o,false)).join(''))
     || '<div class="vazio">Nenhuma ocorrência sua neste ano.</div>';
 }
@@ -603,9 +657,9 @@ async function buscar(termo){
   alvo.innerHTML = '<div class="carregando">Buscando…</div>';
   const t = termo.replace(/[%,()]/g,'');
   const { data, error } = await sb.from('ocorrencias')
-    .select('id,protocolo,status,teste,data_fato,acionamento_em,tipo_exame_bruto,tipos_exame(nome),municipios(nome),laudos(entregue,numero)')
+    .select('id,protocolo,status,teste,ordem_em,data_fato,acionamento_em,tipo_exame_bruto,tipos_exame(nome),municipios(nome),laudos(entregue,numero)')
     .or(`protocolo.ilike.%${t}%,bo.ilike.%${t}%,nome_vitima.ilike.%${t}%,local_bruto.ilike.%${t}%`)
-    .order('acionamento_em',{ascending:false}).limit(60);
+    .order('ordem_em',{ascending:false, nullsFirst:false}).limit(60);
   if(error){ alvo.innerHTML='<div class="vazio">Não foi possível buscar.</div>'; return; }
   alvo.innerHTML = (data||[]).map(o=>cartaoOcorrencia(o,false)).join('') || '<div class="vazio">Nada encontrado.</div>';
 }
