@@ -62,6 +62,21 @@ textarea{min-height:84px;resize:vertical}
 .combo-vazio{padding:12px 13px;font-size:13.5px;color:var(--suave)}
 .combo-limpar{position:absolute;right:8px;top:50%;transform:translateY(-50%);
   background:none;border:0;color:var(--suave);font-size:19px;line-height:1;padding:6px 8px;cursor:pointer}
+/* sub-abas */
+.abas{display:flex;gap:6px;margin-bottom:14px;background:var(--cartao);
+  border:1px solid var(--borda);border-radius:12px;padding:4px}
+.aba{flex:1;padding:9px 8px;border:0;border-radius:9px;background:none;
+  color:var(--suave);font-size:14px;font-weight:600;cursor:pointer}
+.aba.ativa{background:rgba(240,166,60,.16);color:var(--destaque)}
+#t_sync{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.5}
+.sync-linha{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:13px}
+.sync-linha:last-child{border-bottom:0}
+.sync-acao{flex:0 0 96px;font-weight:600}
+.sync-acao.ok{color:var(--ok)}
+.sync-acao.novo{color:var(--destaque)}
+.sync-acao.erro{color:#ffc8bf}
+.sync-acao.igual{color:var(--suave)}
+
 /* ficha de envio ao Galileu */
 .gl-ficha{border-left-color:var(--destaque)}
 .gl-corpo{margin-top:8px}
@@ -361,17 +376,43 @@ nav button.ativo{color:var(--destaque)}
 
     <!-- ---- galileu ---- -->
     <div id="telaGalileu" class="oculto">
-      <h2>Enviar ao Galileu</h2>
+      <h2>Galileu</h2>
       <div class="recado" id="recadoGalileu"></div>
-      <div class="cartao">
-        <div style="font-size:13.5px;color:var(--suave);line-height:1.6">
-          Ocorrências suas que ainda não têm protocolo do Galileu.
-          Abra o Galileu já logado e peça ao seu Claude para enviar as pendentes.
-        </div>
-        <div style="height:10px"></div>
-        <button class="botao secundario" id="btnRecarregarGalileu">Recarregar lista</button>
+
+      <div class="abas">
+        <button type="button" class="aba ativa" data-sub="Enviar">Enviar</button>
+        <button type="button" class="aba" data-sub="Trazer">Trazer</button>
       </div>
-      <div id="listaGalileu"><div class="carregando">Carregando…</div></div>
+
+      <div id="subEnviar">
+        <div class="cartao">
+          <div style="font-size:13.5px;color:var(--suave);line-height:1.6">
+            Ocorrências suas que ainda não têm protocolo do Galileu.
+            Abra o Galileu já logado e peça ao seu Claude para enviar as pendentes.
+          </div>
+          <div style="height:10px"></div>
+          <button class="botao secundario" id="btnRecarregarGalileu">Recarregar lista</button>
+        </div>
+        <div id="listaGalileu"><div class="carregando">Carregando…</div></div>
+      </div>
+
+      <div id="subTrazer" class="oculto">
+        <div class="cartao">
+          <div style="font-size:13.5px;color:var(--suave);line-height:1.6">
+            Traz do Módulo Entrada de Cartório o que mudou: laudos entregues, status e
+            exames novos que ainda não estão aqui. Peça ao seu Claude para colher do
+            Galileu e colar abaixo.
+          </div>
+          <div style="height:12px"></div>
+          <label class="campo">
+            <span>Uma linha por exame, campos separados por barra vertical</span>
+            <textarea id="t_sync" rows="7" placeholder="protocolo|status|entrada|caso|tipo|envolvido|documento|sgd|laudo|entrega|perito"></textarea>
+          </label>
+          <button class="botao" id="btnAplicarSync">Aplicar ao Peritão</button>
+          <div id="recadoSync" class="recado"></div>
+        </div>
+        <div id="resultadoSync"></div>
+      </div>
     </div>
 
     <!-- ---- conta ---- -->
@@ -410,7 +451,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.8</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.9</p>
     </div>
   </main>
 
@@ -1180,6 +1221,169 @@ document.addEventListener('click', e=>{
   const g = e.target.closest('[data-protocolo]');
   if(g) gravarProtocolo(g.dataset.protocolo);
 });
+
+/* ---------- trazer do Galileu ----------
+   Recebe o que o Claude colheu do Módulo Entrada de Cartório e aplica na base.
+   Nunca apaga dado bom: campo vazio na colheita não sobrescreve o que já existe. */
+
+document.querySelectorAll('.aba').forEach(b=>{
+  b.onclick = ()=>{
+    document.querySelectorAll('.aba').forEach(x=>x.classList.remove('ativa'));
+    b.classList.add('ativa');
+    ['Enviar','Trazer'].forEach(s=>
+      $('#sub'+s).classList.toggle('oculto', s!==b.dataset.sub));
+  };
+});
+
+const STATUS_GALILEU = {
+  'pericia concluida':'concluida',
+  'concluida':'concluida',
+  'recebida':'recebida',
+  'a receber':'a_receber',
+  'aguardando':'a_receber',
+  'pericia em andamento':'em_pericia',
+  'em andamento':'em_pericia',
+  'cancelada':'cancelada'
+};
+
+function statusDoGalileu(txt){
+  const t = semAcento(txt).replace(/[.:].*$/,'').trim();
+  for(const k in STATUS_GALILEU) if(t.startsWith(k)) return STATUS_GALILEU[k];
+  return null;
+}
+
+function dataBRparaISO(s){
+  const m = String(s||'').trim().match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : null;
+}
+
+function acharPorNome(lista, nome){
+  if(!nome) return null;
+  const alvo = semAcento(nome).trim();
+  if(!alvo) return null;
+  return lista.find(r => semAcento(r.nome).trim() === alvo)
+      || lista.find(r => semAcento(r.nome).includes(alvo) || alvo.includes(semAcento(r.nome)))
+      || null;
+}
+
+let peritosCache = null;
+async function carregaPeritos(){
+  if(peritosCache) return peritosCache;
+  const { data } = await sb.from('peritos').select('id,nome,nome_completo');
+  peritosCache = (data||[]).map(p=>({ id:p.id, nome:p.nome_completo || p.nome }));
+  return peritosCache;
+}
+
+$('#btnAplicarSync').onclick = async ()=>{
+  recado('#recadoSync','');
+  $('#resultadoSync').innerHTML = '';
+  if(!navigator.onLine) return recado('#recadoSync','Precisa de conexão.');
+
+  const linhas = $('#t_sync').value.split('\n').map(l=>l.trim()).filter(Boolean);
+  if(!linhas.length) return recado('#recadoSync','Cole as linhas colhidas do Galileu.');
+
+  $('#btnAplicarSync').disabled = true;
+  recado('#recadoSync','Aplicando '+linhas.length+' linha(s)…','aviso');
+  const peritos = await carregaPeritos();
+  const saida = [];
+  let atualizadas=0, importadas=0, iguais=0, erros=0;
+
+  for(const linha of linhas){
+    const c = linha.split('|').map(x=>x.trim());
+    const [protocolo, status, entrada, caso, tipo, envolvido, documento, sgd, laudoNum, entrega, peritoNome] = c;
+
+    if(!protocolo || !/^\d{4,10}$/.test(protocolo)){
+      saida.push({ acao:'erro', protocolo:protocolo||'(vazio)', detalhe:'protocolo inválido' });
+      erros++; continue;
+    }
+
+    try{
+      const { data: achadas, error: eBusca } = await sb.from('ocorrencias')
+        .select('id,status,caso,perito_id').eq('protocolo', protocolo).is('excluido_em', null).limit(1);
+      if(eBusca) throw eBusca;
+      const oc = achadas && achadas[0];
+
+      const st = statusDoGalileu(status);
+      const entregaISO = dataBRparaISO(entrega);
+
+      if(oc){
+        const mudanca = {};
+        if(st && st !== oc.status) mudanca.status = st;
+        if(caso && !oc.caso) mudanca.caso = caso;
+        if(Object.keys(mudanca).length){
+          const { error } = await sb.from('ocorrencias').update(mudanca).eq('id', oc.id);
+          if(error) throw error;
+        }
+        const temLaudo = laudoNum || sgd || entregaISO;
+        if(temLaudo){
+          const { data: ls } = await sb.from('laudos').select('id').eq('ocorrencia_id', oc.id).limit(1);
+          const reg = { ocorrencia_id: oc.id, atualizado_em: new Date().toISOString() };
+          if(laudoNum) reg.numero = laudoNum;
+          if(sgd) reg.sgd = sgd;
+          if(entregaISO){ reg.entregue = true; reg.entregue_em = entregaISO; }
+          const { error } = ls && ls[0]
+            ? await sb.from('laudos').update(reg).eq('id', ls[0].id)
+            : await sb.from('laudos').insert(reg);
+          if(error) throw error;
+        }
+        if(Object.keys(mudanca).length || temLaudo){
+          saida.push({ acao:'atualizada', protocolo, detalhe: [
+            mudanca.status ? 'status → '+mudanca.status : null,
+            laudoNum ? 'laudo '+laudoNum : null,
+            entregaISO ? 'entregue' : null
+          ].filter(Boolean).join(', ') || 'sem mudança' });
+          atualizadas++;
+        } else { saida.push({ acao:'igual', protocolo, detalhe:'nada a mudar' }); iguais++; }
+
+      } else {
+        const t = acharPorNome(referencias.tipos, tipo);
+        const p = acharPorNome(peritos, peritoNome);
+        const novo = {
+          protocolo, caso: caso || null,
+          status: st || 'recebida',
+          tipo_exame_id: t ? t.id : null,
+          tipo_exame_bruto: t ? null : (tipo || null),
+          perito_id: p ? p.id : eu.id,
+          criado_por: eu.id,
+          origem: 'galileu',
+          nome_vitima: envolvido || null,
+          tem_vitima: !!envolvido,
+          observacoes: documento || null,
+          acionamento_em: dataBRparaISO(entrada) ? dataBRparaISO(entrada)+'T00:00:00' : null,
+          revisar: true,
+          revisar_motivo: 'Importada do Galileu — faltam município, local e horários'
+        };
+        const { data: ins, error } = await sb.from('ocorrencias').insert(novo).select('id').single();
+        if(error) throw error;
+        if(laudoNum || sgd || entregaISO){
+          const reg = { ocorrencia_id: ins.id };
+          if(laudoNum) reg.numero = laudoNum;
+          if(sgd) reg.sgd = sgd;
+          if(entregaISO){ reg.entregue = true; reg.entregue_em = entregaISO; }
+          await sb.from('laudos').insert(reg);
+        }
+        saida.push({ acao:'importada', protocolo,
+          detalhe: (t ? t.nome : (tipo||'tipo não reconhecido')) + (p ? '' : ' · perito não reconhecido') });
+        importadas++;
+      }
+    }catch(err){
+      saida.push({ acao:'erro', protocolo, detalhe: err.message || String(err) });
+      erros++;
+    }
+  }
+
+  $('#btnAplicarSync').disabled = false;
+  const classe = a => a==='atualizada'?'ok' : a==='importada'?'novo' : a==='erro'?'erro' : 'igual';
+  $('#resultadoSync').innerHTML = `<div class="cartao">${saida.map(r=>
+    `<div class="sync-linha"><span class="sync-acao ${classe(r.acao)}">${escapar(r.acao)}</span>
+     <span style="flex:0 0 70px">${escapar(r.protocolo)}</span>
+     <span style="flex:1;color:var(--suave)">${escapar(r.detalhe)}</span></div>`).join('')}</div>`;
+
+  recado('#recadoSync',
+    `${atualizadas} atualizada(s), ${importadas} importada(s), ${iguais} sem mudança, ${erros} com erro.`,
+    erros ? 'aviso' : 'ok');
+  carregarGalileu();
+};
 
 /* ---------- registros de teste ---------- */
 async function contarTestes(){
