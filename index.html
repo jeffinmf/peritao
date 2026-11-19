@@ -47,6 +47,25 @@ textarea{min-height:84px;resize:vertical}
 }
 .botao:disabled{opacity:.5}
 .botao.secundario{background:transparent;border:1px solid var(--borda);color:var(--texto);font-weight:600}
+/* campo de escolha com filtro por digitação */
+.combo{position:relative}
+.combo-campo{width:100%}
+.combo-lista{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:40;
+  background:var(--cartao);border:1px solid rgba(255,255,255,.18);border-radius:var(--r);
+  max-height:260px;overflow-y:auto;box-shadow:0 10px 30px rgba(0,0,0,.45);-webkit-overflow-scrolling:touch}
+.combo-lista.oculto{display:none}
+.combo-item{padding:11px 13px;font-size:14.5px;line-height:1.35;cursor:pointer;
+  border-bottom:1px solid rgba(255,255,255,.06)}
+.combo-item:last-child{border-bottom:0}
+.combo-item.marcado,.combo-item:active{background:rgba(240,166,60,.18)}
+.combo-item.escolhido{color:var(--destaque);font-weight:600}
+.combo-vazio{padding:12px 13px;font-size:13.5px;color:var(--suave)}
+.combo-limpar{position:absolute;right:8px;top:50%;transform:translateY(-50%);
+  background:none;border:0;color:var(--suave);font-size:19px;line-height:1;padding:6px 8px;cursor:pointer}
+.acoes-item{display:flex;gap:8px;margin-top:10px}
+.acoes-item button{flex:1;padding:8px 10px;font-size:13px;border-radius:9px;
+  background:transparent;border:1px solid rgba(255,255,255,.22);color:var(--texto);cursor:pointer}
+.acoes-item button.perigo{border-color:var(--erro);color:#ffc8bf}
 .selo-teste{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;
   font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
   background:rgba(232,184,75,.18);border:1px solid var(--alerta);color:#f6e2b0;vertical-align:middle}
@@ -168,8 +187,11 @@ nav button.ativo{color:var(--destaque)}
   <main>
     <!-- ---- nova ocorrência ---- -->
     <div id="telaNova">
-      <h2>Nova ocorrência</h2>
+      <h2 id="tituloNova">Nova ocorrência</h2>
       <div class="recado" id="recadoForm"></div>
+      <div id="barraEdicao" class="oculto" style="margin-bottom:14px">
+        <button type="button" class="botao secundario" id="btnCancelarEdicao">Cancelar correção</button>
+      </div>
       <form id="form" autocomplete="off">
         <div class="cartao">
           <label class="campo">
@@ -180,6 +202,7 @@ nav button.ativo{color:var(--destaque)}
             <span>Município *</span>
             <select id="f_municipio" required><option value="">Selecione…</option></select>
           </label>
+
           <label class="campo">
             <span>Endereço</span>
             <input id="f_endereco" placeholder="Rua, avenida, rodovia, povoado">
@@ -350,7 +373,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.5</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.6</p>
     </div>
   </main>
 
@@ -485,7 +508,150 @@ async function carregaReferencias(){
   preenche('#f_orgao', referencias.orgaos, rotuloOrgao);
   // Delegacia circunscricional: só polícia civil.
   preenche('#f_delegacia', referencias.orgaos.filter(r=>r.tipo==='civil'), rotuloOrgao);
+
+  montaCombo('f_tipo', 'Digite parte do exame — ex.: acid, furto');
+  montaCombo('f_municipio', 'Digite o município');
+  montaCombo('f_orgao', 'Digite a delegacia ou órgão');
+  montaCombo('f_delegacia', 'Digite a delegacia');
 }
+/* ---------- escolha com filtro por digitação ----------
+   Mantém o <select> original no DOM, escondido, para que todo o resto do
+   código continue lendo e escrevendo .value normalmente. */
+const combos = {};
+
+function semAcento(s){
+  return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+}
+
+function montaCombo(idSelect, dica){
+  const sel = $('#'+idSelect);
+  if(!sel) return;
+
+  let c = combos[idSelect];
+  if(!c){
+    const env = document.createElement('div');
+    env.className = 'combo';
+    const campo = document.createElement('input');
+    campo.type = 'text';
+    campo.className = 'combo-campo';
+    campo.placeholder = dica || 'Digite para filtrar…';
+    campo.autocomplete = 'off';
+    campo.setAttribute('autocapitalize','off');
+    const limpar = document.createElement('button');
+    limpar.type = 'button';
+    limpar.className = 'combo-limpar oculto';
+    limpar.textContent = '×';
+    limpar.setAttribute('aria-label','Limpar');
+    const lista = document.createElement('div');
+    lista.className = 'combo-lista oculto';
+
+    sel.parentNode.insertBefore(env, sel);
+    env.appendChild(campo); env.appendChild(limpar); env.appendChild(lista);
+    env.appendChild(sel);
+    sel.classList.add('oculto');
+
+    c = combos[idSelect] = { sel, env, campo, lista, limpar, opcoes:[], marcado:-1 };
+    ligaCombo(idSelect);
+  }
+
+  c.opcoes = [...sel.options].filter(o=>o.value).map(o=>({ valor:o.value, texto:o.textContent }));
+  sincronizaCombo(idSelect);
+}
+
+function sincronizaCombo(idSelect){
+  const c = combos[idSelect]; if(!c) return;
+  const atual = c.opcoes.find(o=>o.valor === c.sel.value);
+  c.campo.value = atual ? atual.texto : '';
+  c.limpar.classList.toggle('oculto', !atual);
+}
+
+function defineCombo(idSelect, valor){
+  const c = combos[idSelect]; if(!c) return;
+  c.sel.value = valor == null ? '' : String(valor);
+  sincronizaCombo(idSelect);
+}
+
+function ligaCombo(idSelect){
+  const c = combos[idSelect];
+
+  function desenha(termo){
+    const t = semAcento(termo).trim();
+    const achados = !t ? c.opcoes
+      : c.opcoes.filter(o => semAcento(o.texto).includes(t));
+    c.marcado = -1;
+    if(!achados.length){
+      c.lista.innerHTML = '<div class="combo-vazio">Nada encontrado.</div>';
+    } else {
+      c.lista.innerHTML = achados.map(o =>
+        `<div class="combo-item${o.valor===c.sel.value?' escolhido':''}" data-v="${escapar(o.valor)}">${escapar(o.texto)}</div>`
+      ).join('');
+    }
+    c.lista.scrollTop = 0;
+    c.lista.classList.remove('oculto');
+  }
+
+  function escolhe(valor){
+    c.sel.value = valor;
+    sincronizaCombo(idSelect);
+    c.lista.classList.add('oculto');
+    // O campo está dentro de um <label>: o clique no item devolve o foco a ele,
+    // o que reabriria a lista. Esta trava evita isso.
+    c.travaAbertura = true;
+    setTimeout(()=>{ c.travaAbertura = false; }, 350);
+    c.sel.dispatchEvent(new Event('change', { bubbles:true }));
+  }
+
+  function fecha(){
+    c.lista.classList.add('oculto');
+    sincronizaCombo(idSelect); // descarta texto digitado que não virou escolha
+  }
+
+  c.campo.addEventListener('focus', ()=>{
+    if(c.travaAbertura) return;
+    c.campo.select(); desenha('');
+  });
+  c.campo.addEventListener('input', ()=> desenha(c.campo.value));
+
+  c.campo.addEventListener('keydown', e=>{
+    const itens = [...c.lista.querySelectorAll('.combo-item')];
+    if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+      e.preventDefault();
+      if(!itens.length) return;
+      c.marcado += (e.key === 'ArrowDown' ? 1 : -1);
+      if(c.marcado < 0) c.marcado = itens.length - 1;
+      if(c.marcado >= itens.length) c.marcado = 0;
+      itens.forEach(x=>x.classList.remove('marcado'));
+      itens[c.marcado].classList.add('marcado');
+      itens[c.marcado].scrollIntoView({ block:'nearest' });
+    } else if(e.key === 'Enter'){
+      e.preventDefault();
+      const alvo = itens[c.marcado >= 0 ? c.marcado : 0];
+      if(alvo) escolhe(alvo.dataset.v);
+    } else if(e.key === 'Escape'){
+      fecha(); c.campo.blur();
+    }
+  });
+
+  // pointerdown roda antes do blur, senão a lista fecha antes do clique valer
+  c.lista.addEventListener('pointerdown', e=>{
+    const item = e.target.closest('.combo-item');
+    if(!item) return;
+    e.preventDefault();
+    escolhe(item.dataset.v);
+  });
+
+  c.limpar.addEventListener('pointerdown', e=>{ e.preventDefault(); escolhe(''); });
+
+  c.campo.addEventListener('blur', ()=> setTimeout(fecha, 120));
+}
+
+document.addEventListener('pointerdown', e=>{
+  Object.keys(combos).forEach(id=>{
+    const c = combos[id];
+    if(!c.env.contains(e.target)) c.lista.classList.add('oculto');
+  });
+});
+
 function preenche(sel, lista, rotulo){
   const el = $(sel);
   el.innerHTML = '<option value="">Selecione…</option>';
@@ -510,7 +676,7 @@ $('#f_temVitima').onchange = e => $('#caixaVitima').classList.toggle('oculto', !
    Só preenche quando o perito ainda não escolheu nada, para não sobrescrever. */
 $('#f_orgao').onchange = e => {
   const o = referencias.orgaos.find(x => String(x.id) === e.target.value);
-  if(o && o.tipo === 'civil' && !$('#f_delegacia').value) $('#f_delegacia').value = o.id;
+  if(o && o.tipo === 'civil' && !$('#f_delegacia').value) defineCombo('f_delegacia', o.id);
 };
 
 $('#f_forma').onchange = e =>
@@ -591,6 +757,20 @@ $('#btnSalvar').onclick = async () => {
     teste: $('#f_teste').checked
   };
 
+  // Correção de um lançamento que já está no banco.
+  if(editandoId){
+    if(!navigator.onLine) return recado('#recadoForm','A correção precisa de conexão.');
+    delete reg.criado_por; delete reg.origem; delete reg.status; delete reg.teste;
+    $('#btnSalvar').disabled = true;
+    const { error } = await sb.from('ocorrencias').update(reg).eq('id', editandoId);
+    $('#btnSalvar').disabled = false;
+    if(error) return recado('#recadoForm','Não foi possível salvar: '+error.message);
+    editandoId = null;
+    limparForm(); modoEdicao(false); carregarMinhas();
+    recado('#recadoForm','Correção salva.','ok');
+    return;
+  }
+
   $('#btnSalvar').disabled = true;
   const ok = await gravar(reg);
   $('#btnSalvar').disabled = false;
@@ -617,8 +797,7 @@ async function gravar(reg){
 function limparForm(){
   ['f_protocolo','f_endereco','f_numero','f_complemento','f_bo','f_vitima','f_obs',
    'f_fato','f_atendimento','f_liberacao'].forEach(id=>$('#'+id).value='');
-  $('#f_tipo').value=''; $('#f_municipio').value='';
-  $('#f_orgao').value=''; $('#f_delegacia').value='';
+  ['f_tipo','f_municipio','f_orgao','f_delegacia'].forEach(id=>defineCombo(id,''));
   $('#f_forma').value='telefone'; $('#avisoRequisicao').classList.add('oculto');
   $('#f_temVitima').checked=false; $('#caixaVitima').classList.add('oculto');
   $('#f_teste').checked=false; $('#cartaoTeste').classList.remove('ligado');
@@ -671,9 +850,17 @@ function cartaoOcorrencia(o, pendente){
   else if(!pendente) partes.push('laudo pendente');
   if(pendente) partes.push('aguardando envio');
   const selo = o.teste ? '<span class="selo-teste">teste</span>' : '';
+  // Só o que já está no banco e é do próprio perito pode ser corrigido daqui.
+  const acoes = (!pendente && o.id && o.origem === 'app' && o.perito_id === eu.id)
+    ? `<div class="acoes-item">
+         <button type="button" data-editar="${escapar(o.id)}">Editar</button>
+         <button type="button" class="perigo" data-excluir="${escapar(o.id)}">Excluir</button>
+       </div>`
+    : '';
   return `<div class="item ${classe}${o.teste?' eh-teste':''}">
     <h3>${escapar(tipo)}${selo}</h3>
     <div class="meta">${partes.map(p=>`<span>${escapar(p)}</span>`).join('')}</div>
+    ${acoes}
   </div>`;
 }
 function escapar(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -693,10 +880,11 @@ async function carregarMinhas(){
   alvo.innerHTML = '<div class="carregando">Carregando…</div>';
   const ano = new Date().getFullYear();
   const { data, error, count } = await sb.from('ocorrencias')
-    .select('id,protocolo,status,teste,ordem_em,data_fato,acionamento_em,tipo_exame_bruto,tipos_exame(nome),municipios(nome),laudos(entregue,numero)',
+    .select('id,protocolo,status,teste,origem,perito_id,ordem_em,data_fato,acionamento_em,tipo_exame_bruto,tipos_exame(nome),municipios(nome),laudos(entregue,numero)',
             { count:'exact' })
     .eq('perito_id', eu.id)
     .eq('ano', ano)
+    .is('excluido_em', null)
     .order('ordem_em',{ascending:false, nullsFirst:false})
     .limit(500);
 
@@ -724,8 +912,9 @@ async function buscar(termo){
   alvo.innerHTML = '<div class="carregando">Buscando…</div>';
   const t = termo.replace(/[%,()]/g,'');
   const { data, error } = await sb.from('ocorrencias')
-    .select('id,protocolo,status,teste,ordem_em,data_fato,acionamento_em,tipo_exame_bruto,tipos_exame(nome),municipios(nome),laudos(entregue,numero)')
+    .select('id,protocolo,status,teste,origem,perito_id,ordem_em,data_fato,acionamento_em,tipo_exame_bruto,tipos_exame(nome),municipios(nome),laudos(entregue,numero)')
     .or(`protocolo.ilike.%${t}%,bo.ilike.%${t}%,nome_vitima.ilike.%${t}%,local_bruto.ilike.%${t}%`)
+    .is('excluido_em', null)
     .order('ordem_em',{ascending:false, nullsFirst:false}).limit(60);
   if(error){ alvo.innerHTML='<div class="vazio">Não foi possível buscar.</div>'; return; }
   alvo.innerHTML = (data||[]).map(o=>cartaoOcorrencia(o,false)).join('') || '<div class="vazio">Nada encontrado.</div>';
@@ -743,6 +932,94 @@ document.querySelectorAll('nav button').forEach(b=>{
     if(b.dataset.tela==='Conta') contarTestes();
     window.scrollTo(0,0);
   };
+});
+
+/* ---------- editar e excluir lançamento ---------- */
+let editandoId = null;
+
+function paraCampoLocal(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  if(isNaN(d)) return '';
+  return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16);
+}
+
+function vaiPara(tela){
+  const b = document.querySelector(`nav button[data-tela="${tela}"]`);
+  if(b) b.click();
+}
+
+function modoEdicao(ligado){
+  $('#tituloNova').textContent = ligado ? 'Corrigir ocorrência' : 'Nova ocorrência';
+  $('#btnSalvar').textContent = ligado ? 'Salvar correção' : 'Salvar ocorrência';
+  $('#barraEdicao').classList.toggle('oculto', !ligado);
+  $('#cartaoTeste').classList.toggle('oculto', ligado);
+}
+
+async function abrirEdicao(id){
+  if(!navigator.onLine) return recado('#recadoForm','Editar precisa de conexão.');
+  const { data, error } = await sb.from('ocorrencias').select('*').eq('id', id).maybeSingle();
+  if(error || !data) return recado('#recadoForm','Não foi possível abrir esse lançamento.');
+
+  editandoId = id;
+  vaiPara('Nova');
+
+  defineCombo('f_tipo', data.tipo_exame_id);
+  defineCombo('f_municipio', data.municipio_id);
+  defineCombo('f_orgao', data.orgao_acionamento_id);
+  defineCombo('f_delegacia', data.delegacia_id);
+  $('#f_forma').value = data.forma_acionamento || 'telefone';
+  $('#avisoRequisicao').classList.toggle('oculto', data.forma_acionamento !== 'requisicao');
+  $('#f_acionamento').value = paraCampoLocal(data.acionamento_em);
+  $('#f_atendimento').value = paraCampoLocal(data.atendimento_em);
+  $('#f_liberacao').value   = paraCampoLocal(data.liberacao_em);
+  $('#f_fato').value        = paraCampoLocal(data.data_fato);
+  $('#f_endereco').value    = data.endereco || '';
+  $('#f_numero').value      = data.numero || '';
+  $('#f_complemento').value = data.complemento || '';
+  $('#f_bo').value          = data.bo || '';
+  $('#f_protocolo').value   = data.protocolo || '';
+  $('#f_obs').value         = data.observacoes || '';
+  $('#f_temVitima').checked = !!data.tem_vitima;
+  $('#caixaVitima').classList.toggle('oculto', !data.tem_vitima);
+  $('#f_vitima').value      = data.nome_vitima || '';
+  if(data.latitude != null && data.longitude != null){
+    $('#btnGps').dataset.lat = data.latitude;
+    $('#btnGps').dataset.lng = data.longitude;
+    $('#gpsEco').textContent = `${data.latitude}, ${data.longitude}`;
+  }
+  mostrarDuracao();
+  modoEdicao(true);
+  recado('#recadoForm','Corrigindo um lançamento já salvo.','aviso');
+  window.scrollTo(0,0);
+}
+
+$('#btnCancelarEdicao').onclick = ()=>{
+  editandoId = null;
+  limparForm();
+  modoEdicao(false);
+  recado('#recadoForm','');
+};
+
+async function excluirLancamento(id){
+  if(!navigator.onLine) return recado('#recadoForm','Excluir precisa de conexão.');
+  if(!window.confirm('Excluir este lançamento? Ele sai das suas listas e da estatística. O registro fica guardado no banco, marcado como excluído, e dá para recuperar.')) return;
+
+  const { error } = await sb.from('ocorrencias')
+    .update({ excluido_em: new Date().toISOString() })
+    .eq('id', id);
+
+  if(error) return recado('#recadoForm','Não foi possível excluir: '+error.message);
+  if(editandoId === id){ editandoId = null; limparForm(); modoEdicao(false); }
+  carregarMinhas();
+  recado('#recadoForm','Lançamento excluído.','ok');
+}
+
+document.addEventListener('click', e=>{
+  const ed = e.target.closest('[data-editar]');
+  if(ed) return abrirEdicao(ed.dataset.editar);
+  const ex = e.target.closest('[data-excluir]');
+  if(ex) return excluirLancamento(ex.dataset.excluir);
 });
 
 /* ---------- registros de teste ---------- */
