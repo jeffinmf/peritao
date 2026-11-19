@@ -62,6 +62,19 @@ textarea{min-height:84px;resize:vertical}
 .combo-vazio{padding:12px 13px;font-size:13.5px;color:var(--suave)}
 .combo-limpar{position:absolute;right:8px;top:50%;transform:translateY(-50%);
   background:none;border:0;color:var(--suave);font-size:19px;line-height:1;padding:6px 8px;cursor:pointer}
+/* ficha de envio ao Galileu */
+.gl-ficha{border-left-color:var(--destaque)}
+.gl-corpo{margin-top:8px}
+.gl-linha{display:flex;gap:10px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:13px;line-height:1.45}
+.gl-linha:last-child{border-bottom:0}
+.gl-r{flex:0 0 42%;color:var(--suave)}
+.gl-v{flex:1;color:var(--texto);word-break:break-word}
+.gl-bloqueio{background:rgba(228,98,77,.14);border:1px solid var(--erro);color:#ffc8bf;
+  border-radius:var(--r);padding:10px 12px;font-size:13px;line-height:1.5}
+.gl-protocolo{display:flex;gap:8px;margin-top:12px}
+.gl-protocolo input{flex:1;min-width:0}
+.gl-protocolo button{flex:0 0 auto;padding:0 16px;border-radius:10px;font-size:13.5px;
+  background:transparent;border:1px solid var(--destaque);color:var(--destaque);cursor:pointer}
 .acoes-item{position:absolute;top:8px;right:8px;display:flex;gap:2px}
 .acoes-item button{
   width:36px;height:36px;display:flex;align-items:center;justify-content:center;
@@ -107,8 +120,9 @@ nav{
   border-top:1px solid var(--borda);padding-bottom:env(safe-area-inset-bottom);z-index:30
 }
 nav button{
-  flex:1;background:none;border:0;padding:11px 4px 13px;color:var(--suave);
-  font-size:11px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px
+  flex:1;min-width:0;background:none;border:0;padding:11px 2px 13px;color:var(--suave);
+  font-size:10.5px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;
+  white-space:nowrap
 }
 nav button svg{width:22px;height:22px}
 nav button.ativo{color:var(--destaque)}
@@ -345,6 +359,21 @@ nav button.ativo{color:var(--destaque)}
       <div id="listaBusca"><div class="vazio">Digite algo para buscar.</div></div>
     </div>
 
+    <!-- ---- galileu ---- -->
+    <div id="telaGalileu" class="oculto">
+      <h2>Enviar ao Galileu</h2>
+      <div class="recado" id="recadoGalileu"></div>
+      <div class="cartao">
+        <div style="font-size:13.5px;color:var(--suave);line-height:1.6">
+          Ocorrências suas que ainda não têm protocolo do Galileu.
+          Abra o Galileu já logado e peça ao seu Claude para enviar as pendentes.
+        </div>
+        <div style="height:10px"></div>
+        <button class="botao secundario" id="btnRecarregarGalileu">Recarregar lista</button>
+      </div>
+      <div id="listaGalileu"><div class="carregando">Carregando…</div></div>
+    </div>
+
     <!-- ---- conta ---- -->
     <div id="telaConta" class="oculto">
       <h2>Conta</h2>
@@ -381,7 +410,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.7</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.8</p>
     </div>
   </main>
 
@@ -397,6 +426,10 @@ nav button.ativo{color:var(--destaque)}
     <button data-tela="Buscar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
       Buscar
+    </button>
+    <button data-tela="Galileu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+      Galileu
     </button>
     <button data-tela="Conta">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
@@ -943,11 +976,12 @@ document.querySelectorAll('nav button').forEach(b=>{
   b.onclick = ()=>{
     document.querySelectorAll('nav button').forEach(x=>x.classList.remove('ativo'));
     b.classList.add('ativo');
-    ['Nova','Minhas','Buscar','Conta'].forEach(t=>
+    ['Nova','Minhas','Buscar','Galileu','Conta'].forEach(t=>
       $('#tela'+t).classList.toggle('oculto', t!==b.dataset.tela));
     $('.rodape').classList.toggle('oculto', b.dataset.tela!=='Nova');
     if(b.dataset.tela==='Minhas') carregarMinhas();
     if(b.dataset.tela==='Conta') contarTestes();
+    if(b.dataset.tela==='Galileu') carregarGalileu();
     window.scrollTo(0,0);
   };
 });
@@ -1038,6 +1072,113 @@ document.addEventListener('click', e=>{
   if(ed) return abrirEdicao(ed.dataset.editar);
   const ex = e.target.closest('[data-excluir]');
   if(ex) return excluirLancamento(ex.dataset.excluir);
+});
+
+/* ---------- envio ao Galileu ----------
+   Esta tela é lida pelo Claude do próprio perito, pelo navegador dele, com a
+   sessão dele. Cada ficha traz os valores já no formato que o Galileu espera. */
+
+function semAcentoMaiusc(s){
+  return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase();
+}
+function dataHoraBR(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  if(isNaN(d)) return '';
+  const p = n => String(n).padStart(2,'0');
+  return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function fichaGalileu(o){
+  const falta = [];
+  if(!o.tipos_exame?.nome) falta.push('tipo de exame');
+  if(!o.orgaos_acionamento?.nome_galileu) falta.push('órgão de acionamento sem correspondência no Galileu');
+  if(!o.orgaos_delegacia?.nome_galileu) falta.push('delegacia responsável sem correspondência no Galileu');
+  if(!o.municipios?.nome) falta.push('município');
+  if(!o.atendimento_em) falta.push('hora de chegada');
+  if(!o.liberacao_em) falta.push('hora de saída');
+
+  const linha = (r,v) => v ? `<div class="gl-linha"><span class="gl-r">${escapar(r)}</span><span class="gl-v">${escapar(v)}</span></div>` : '';
+
+  const corpo = falta.length
+    ? `<div class="gl-bloqueio">Não dá para enviar: ${escapar(falta.join('; '))}.</div>`
+    : `
+      ${linha('Tipo de Ocorrência', o.tipos_exame.nome)}
+      ${linha('Órgão Acionamento', o.orgaos_acionamento.nome_galileu)}
+      ${linha('Data/Hora Acionamento', dataHoraBR(o.acionamento_em))}
+      ${linha('Forma de Acionamento', 'Telefone')}
+      ${linha('Delegacia Responsável', o.orgaos_delegacia.nome_galileu)}
+      ${linha('Data/Hora da Ocorrência', dataHoraBR(o.data_fato))}
+      ${linha('Data/Hora do Atendimento', dataHoraBR(o.atendimento_em))}
+      ${linha('Data/Hora da Liberação', dataHoraBR(o.liberacao_em))}
+      ${linha('Latitude', o.latitude)}
+      ${linha('Longitude', o.longitude)}
+      ${linha('Endereço', o.endereco)}
+      ${linha('Número', o.numero)}
+      ${linha('Complemento', o.complemento)}
+      ${linha('Município', semAcentoMaiusc(o.municipios.nome))}
+      ${linha('Observações', o.observacoes)}`;
+
+  const gravar = falta.length ? '' : `
+      <div class="gl-protocolo">
+        <input id="prot_${escapar(o.id)}" inputmode="numeric" placeholder="Protocolo devolvido pelo Galileu">
+        <button type="button" data-protocolo="${escapar(o.id)}">Gravar</button>
+      </div>`;
+
+  return `<div class="item gl-ficha" data-ocorrencia="${escapar(o.id)}">
+    <h3>${escapar(o.tipos_exame?.nome || 'Exame')}</h3>
+    <div class="gl-corpo">${corpo}</div>
+    ${gravar}
+  </div>`;
+}
+
+async function carregarGalileu(){
+  const alvo = $('#listaGalileu');
+  recado('#recadoGalileu','');
+  if(!navigator.onLine){ alvo.innerHTML = '<div class="vazio">Precisa de conexão.</div>'; return; }
+  alvo.innerHTML = '<div class="carregando">Carregando…</div>';
+
+  const { data, error } = await sb.from('ocorrencias')
+    .select('id,protocolo,data_fato,acionamento_em,atendimento_em,liberacao_em,latitude,longitude,'
+          + 'endereco,numero,complemento,observacoes,'
+          + 'tipos_exame(nome),municipios(nome),'
+          + 'orgaos_acionamento:orgaos!ocorrencias_orgao_acionamento_id_fkey(nome,nome_galileu),'
+          + 'orgaos_delegacia:orgaos!ocorrencias_delegacia_id_fkey(nome,nome_galileu)')
+    .eq('perito_id', eu.id)
+    .eq('origem', 'app')
+    .eq('teste', false)
+    .is('protocolo', null)
+    .is('excluido_em', null)
+    .order('atendimento_em', { ascending:true })
+    .limit(50);
+
+  if(error){ alvo.innerHTML = '<div class="vazio">Não foi possível carregar: '+escapar(error.message)+'</div>'; return; }
+  const lista = data || [];
+  alvo.innerHTML = lista.length
+    ? lista.map(fichaGalileu).join('')
+    : '<div class="vazio">Nenhuma ocorrência pendente de envio.</div>';
+}
+
+$('#btnRecarregarGalileu').onclick = carregarGalileu;
+
+async function gravarProtocolo(id){
+  const campo = $('#prot_'+id);
+  const prot = campo ? campo.value.trim() : '';
+  if(!prot) return recado('#recadoGalileu','Informe o protocolo devolvido pelo Galileu.');
+  if(!/^\d{4,10}$/.test(prot)) return recado('#recadoGalileu','O protocolo do Galileu é só dígitos.');
+
+  const { error } = await sb.from('ocorrencias')
+    .update({ protocolo: prot, status: 'a_receber', envio_galileu: 'enviada', enviado_em: new Date().toISOString(), enviado_por: eu.id })
+    .eq('id', id);
+
+  if(error) return recado('#recadoGalileu','Não foi possível gravar: '+error.message);
+  recado('#recadoGalileu','Protocolo '+prot+' gravado.','ok');
+  carregarGalileu();
+}
+
+document.addEventListener('click', e=>{
+  const g = e.target.closest('[data-protocolo]');
+  if(g) gravarProtocolo(g.dataset.protocolo);
 });
 
 /* ---------- registros de teste ---------- */
