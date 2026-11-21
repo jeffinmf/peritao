@@ -171,6 +171,72 @@ nav button.ativo{color:var(--destaque)}
 .estat div{background:var(--cartao);border:1px solid var(--borda);border-radius:12px;padding:13px}
 .estat b{display:block;font-size:25px;line-height:1.15}
 .estat small{color:var(--suave);font-size:12px}
+
+/* ---------- escala ---------- */
+.mes-nav{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.mes-nav button{width:44px;height:44px;flex:none;border:1px solid var(--borda);border-radius:12px;
+  background:var(--fundo2);color:var(--texto);font-size:19px;cursor:pointer}
+.mes-nav button:disabled{opacity:.3}
+.mes-nav .mes-rotulo{flex:1;text-align:center;font-size:16px;font-weight:700}
+.mes-nav .mes-rotulo small{display:block;font-size:11.5px;font-weight:500;color:var(--suave)}
+
+.horas-perito{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.horas-perito:last-child{margin-bottom:0}
+.horas-topo{display:flex;justify-content:space-between;align-items:baseline;font-size:14px}
+.horas-topo b{font-weight:600}
+.horas-barra{height:8px;border-radius:4px;background:rgba(255,255,255,.09);overflow:hidden}
+.horas-barra i{display:block;height:100%;border-radius:4px}
+.horas-det{font-size:11.5px;color:var(--suave)}
+
+.dia{display:flex;gap:11px;padding:10px 12px;border-radius:12px;background:var(--cartao);
+  border:1px solid var(--borda);margin-bottom:7px;cursor:pointer;align-items:flex-start}
+.dia.vago{border-style:dashed;border-color:rgba(232,184,75,.5)}
+.dia.fds{background:rgba(255,255,255,.035)}
+.dia.aberto{border-color:var(--destaque)}
+.dia-data{flex:0 0 42px;text-align:center}
+.dia-data b{display:block;font-size:19px;line-height:1.1;font-variant-numeric:tabular-nums}
+.dia-data small{font-size:10.5px;color:var(--suave);text-transform:uppercase;letter-spacing:.3px}
+.dia-turnos{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:5px;padding-top:2px}
+.turno{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:999px;
+  font-size:12.5px;font-weight:600;border:1px solid transparent}
+.turno i{font-style:normal;font-weight:500;opacity:.8;font-size:11px}
+.dia-vazio{font-size:12.5px;color:var(--alerta);padding-top:5px}
+
+.editor-dia{background:var(--fundo2);border:1px solid var(--destaque);border-radius:12px;
+  padding:12px;margin:-3px 0 9px}
+.editor-dia h4{margin:0 0 10px;font-size:14px;font-weight:600}
+.linha-plantao{display:flex;gap:7px;align-items:center;margin-bottom:8px}
+.linha-plantao select{flex:1;min-width:0;padding:11px}
+.linha-plantao button{width:42px;height:42px;flex:none;border:1px solid var(--borda);
+  border-radius:11px;background:transparent;color:var(--erro);cursor:pointer;font-size:16px}
+
+.afast{display:flex;gap:10px;align-items:flex-start;padding:9px 11px;border-radius:11px;
+  background:rgba(255,255,255,.05);border-left:3px solid var(--suave);margin-bottom:7px}
+.afast div{flex:1;min-width:0}
+.afast b{display:block;font-size:14px;font-weight:600}
+.afast small{color:var(--suave);font-size:12px}
+.afast button{width:36px;height:36px;flex:none;border:1px solid var(--borda);border-radius:10px;
+  background:transparent;color:var(--erro);cursor:pointer}
+
+.selo{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:600}
+.selo.rascunho{background:rgba(232,184,75,.18);color:#f6e2b0}
+.selo.publicada{background:rgba(63,178,127,.18);color:#bdf0d9}
+
+/* documento oficial */
+.doc{background:#fff;color:#16202e;border-radius:10px;padding:18px 16px;font-size:12px;line-height:1.45;
+  overflow-x:auto}
+.doc h3{margin:0;font-size:13px;text-align:center;font-weight:700}
+.doc .orgao{font-size:10.5px;color:#4f5b6b;text-align:center;line-height:1.4;margin-bottom:12px}
+.doc .horarios{text-align:center;font-size:11px;margin:6px 0 12px}
+.doc table{width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:12px}
+.doc th,.doc td{border:1px solid #16202e;padding:4px 3px;vertical-align:middle}
+.doc th{background:#eceff3;font-weight:600;text-align:center;font-size:9.5px}
+.doc td.dnum{text-align:center;font-weight:700;background:#f8f9fb;padding:2px}
+.doc td.dcel{text-align:center;height:34px;font-size:9.5px}
+.doc .obs{border:1px solid #16202e;padding:8px 9px;font-size:10.5px;margin-bottom:14px}
+.doc .assina{text-align:center;margin:14px 0}
+.doc .assina b{display:block;font-size:11px}
+.doc .assina span{font-size:10.5px;color:#4f5b6b}
 </style>
 </head>
 <body>
@@ -415,6 +481,85 @@ nav button.ativo{color:var(--destaque)}
       </div>
     </div>
 
+    <!-- ---- escala ---- -->
+    <div id="telaEscala" class="oculto">
+      <h2>Escala de plantão</h2>
+      <div class="recado" id="recadoEscala"></div>
+
+      <div class="mes-nav">
+        <button type="button" id="mesAnterior" aria-label="Mês anterior">‹</button>
+        <div class="mes-rotulo" id="mesRotulo">—<small id="mesSituacao"></small></div>
+        <button type="button" id="mesSeguinte" aria-label="Próximo mês">›</button>
+      </div>
+
+      <div class="abas">
+        <button type="button" class="aba ativa" data-esc="Interna">Interna</button>
+        <button type="button" class="aba" data-esc="Oficial">Oficial</button>
+      </div>
+
+      <div id="escInterna">
+        <div class="cartao" id="cartaoHoras"><div class="carregando">Carregando…</div></div>
+        <div id="listaDias"></div>
+
+        <div class="cartao">
+          <h3 style="margin:0 0 10px;font-size:15px;font-weight:600">Férias e afastamentos</h3>
+          <div id="listaAfastamentos"></div>
+          <div id="formAfastamento" class="oculto">
+            <div style="height:6px"></div>
+            <label class="campo">
+              <span>Perito</span>
+              <select id="a_perito"></select>
+            </label>
+            <div class="linha">
+              <label class="campo" style="flex:1">
+                <span>Início</span>
+                <input type="date" id="a_inicio">
+              </label>
+              <label class="campo" style="flex:1">
+                <span>Fim</span>
+                <input type="date" id="a_fim">
+              </label>
+            </div>
+            <label class="campo">
+              <span>Motivo</span>
+              <select id="a_tipo">
+                <option value="ferias">Férias</option>
+                <option value="licenca">Licença</option>
+                <option value="afastamento">Afastamento</option>
+              </select>
+            </label>
+            <button class="botao" id="btnSalvarAfastamento">Salvar afastamento</button>
+          </div>
+          <button class="botao secundario" id="btnNovoAfastamento">Registrar afastamento</button>
+          <div class="recado" id="recadoAfastamento"></div>
+          <div style="font-size:12px;color:var(--suave);margin-top:10px;line-height:1.5">
+            Entra nas observações da escala oficial e desconta as horas ordinárias do mês.
+          </div>
+        </div>
+
+        <div class="cartao" id="cartaoPublicar">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <span class="selo rascunho" id="seloEscala">Rascunho</span>
+            <span style="font-size:12.5px;color:var(--suave)" id="avisoVagos"></span>
+          </div>
+          <button class="botao" id="btnPublicar">Publicar escala do mês</button>
+          <div class="recado" id="recadoPublicar"></div>
+          <div style="font-size:12px;color:var(--suave);margin-top:10px;line-height:1.5">
+            Publicada, a escala aparece para todo o núcleo e sai do rascunho.
+          </div>
+        </div>
+      </div>
+
+      <div id="escOficial" class="oculto">
+        <div class="cartao">
+          <div style="font-size:13.5px;color:var(--suave);line-height:1.6">
+            Documento no modelo, para assinatura e envio. Visível apenas a peritos.
+          </div>
+        </div>
+        <div id="documentoOficial"><div class="carregando">Carregando…</div></div>
+      </div>
+    </div>
+
     <!-- ---- conta ---- -->
     <div id="telaConta" class="oculto">
       <h2>Conta</h2>
@@ -451,7 +596,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.10</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.11</p>
     </div>
   </main>
 
@@ -467,6 +612,10 @@ nav button.ativo{color:var(--destaque)}
     <button data-tela="Buscar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
       Buscar
+    </button>
+    <button data-tela="Escala">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+      Escala
     </button>
     <button data-tela="Galileu">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
@@ -1017,12 +1166,13 @@ document.querySelectorAll('nav button').forEach(b=>{
   b.onclick = ()=>{
     document.querySelectorAll('nav button').forEach(x=>x.classList.remove('ativo'));
     b.classList.add('ativo');
-    ['Nova','Minhas','Buscar','Galileu','Conta'].forEach(t=>
+    ['Nova','Minhas','Buscar','Escala','Galileu','Conta'].forEach(t=>
       $('#tela'+t).classList.toggle('oculto', t!==b.dataset.tela));
     $('.rodape').classList.toggle('oculto', b.dataset.tela!=='Nova');
     if(b.dataset.tela==='Minhas') carregarMinhas();
     if(b.dataset.tela==='Conta') contarTestes();
     if(b.dataset.tela==='Galileu') carregarGalileu();
+    if(b.dataset.tela==='Escala') carregaConfig().then(carregarEscala);
     window.scrollTo(0,0);
   };
 });
@@ -1397,6 +1547,450 @@ $('#btnAplicarSync').onclick = async ()=>{
   recado('#recadoSync', resumo, erros ? 'aviso' : 'ok');
   carregarGalileu();
 };
+
+/* ================= ESCALA =================
+   Dois tipos por mês, e eles não são a mesma coisa:
+   - interna: quem de fato cobre o plantão;
+   - oficial: o documento que se declara, que respeita as férias.
+   As horas de plantão extraordinário saem SEMPRE da oficial. */
+
+const TURNOS = {
+  '24h':         { curto:'24h',  faixa:'8:00 às 8:00'  },
+  '12h':         { curto:'12h',  faixa:'8:00 às 20:00' },
+  '12h_noturno': { curto:'12h*', faixa:'20:00 às 8:00' }
+};
+const CORES_PERITO = ['#6ea8f0','#f0a63c','#4fc39a','#d98ad4','#e8b84b','#8fd0e8'];
+const MESES = ['janeiro','fevereiro','março','abril','maio','junho',
+               'julho','agosto','setembro','outubro','novembro','dezembro'];
+const SEMANA = ['dom','seg','ter','qua','qui','sex','sáb'];
+
+const esc = {
+  ano:0, mes:0, tipo:'interna',
+  escalas:{}, plantoes:{}, afastamentos:[], horas:[], diaAberto:null, limite:null
+};
+
+function corDoPerito(id){
+  const i = (esc.peritosOrdem || []).indexOf(id);
+  return CORES_PERITO[(i < 0 ? 0 : i) % CORES_PERITO.length];
+}
+function podeEditarEscala(){ return eu && eu.perfil === 'administrador'; }
+function diasNoMes(a,m){ return new Date(a, m, 0).getDate(); }
+function iso(a,m,d){ return `${a}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+
+function mesLimite(){
+  if(esc.limite) return esc.limite;
+  const h = new Date();
+  esc.limite = { ano:h.getFullYear(), mes:h.getMonth()+1 };
+  return esc.limite;
+}
+
+async function carregarEscala(){
+  if(!esc.ano){ const h = new Date(); esc.ano = h.getFullYear(); esc.mes = h.getMonth()+1; }
+  recado('#recadoEscala','');
+  if(!navigator.onLine){
+    $('#listaDias').innerHTML = '<div class="vazio">A escala precisa de conexão.</div>';
+    return;
+  }
+  $('#mesRotulo').firstChild.textContent =
+    MESES[esc.mes-1].charAt(0).toUpperCase() + MESES[esc.mes-1].slice(1) + '/' + esc.ano;
+
+  const peritos = await carregaPeritos();
+  const { data: ativos } = await sb.from('peritos')
+    .select('id,nome,nome_completo,matricula,cargo,lotacao,chefe')
+    .eq('vinculo','fixo').eq('ativo',true).order('id');
+  esc.peritosAtivos = ativos || [];
+  esc.peritosOrdem = esc.peritosAtivos.map(p=>p.id);
+  esc.nomes = {}; peritos.forEach(p=>{ esc.nomes[p.id] = p.nome; });
+  esc.curtos = {}; (ativos||[]).forEach(p=>{ esc.curtos[p.id] = p.nome; });
+
+  const { data: linhas } = await sb.from('escalas')
+    .select('*').eq('ano',esc.ano).eq('mes',esc.mes);
+  esc.escalas = {}; (linhas||[]).forEach(l=>{ esc.escalas[l.tipo] = l; });
+
+  const ids = (linhas||[]).map(l=>l.id);
+  esc.plantoes = { interna:[], oficial:[] };
+  if(ids.length){
+    const { data: ps } = await sb.from('escala_plantoes')
+      .select('id,escala_id,dia,perito_id,turno').in('escala_id', ids).order('dia');
+    (ps||[]).forEach(p=>{
+      const t = (linhas.find(l=>l.id===p.escala_id)||{}).tipo;
+      if(t) esc.plantoes[t].push(p);
+    });
+  }
+
+  const ini = iso(esc.ano, esc.mes, 1), fim = iso(esc.ano, esc.mes, diasNoMes(esc.ano,esc.mes));
+  const { data: afs } = await sb.from('afastamentos')
+    .select('id,perito_id,tipo,inicio,fim').lte('inicio',fim).gte('fim',ini).order('inicio');
+  esc.afastamentos = afs || [];
+
+  const { data: hs } = await sb.from('v_plantao_extraordinario')
+    .select('*').eq('ano',esc.ano).eq('mes',esc.mes);
+  esc.horas = hs || [];
+
+  desenhaEscala();
+}
+
+function desenhaEscala(){
+  const lim = mesLimite();
+  const distancia = (esc.ano - lim.ano)*12 + (esc.mes - lim.mes);
+  $('#mesSeguinte').disabled = distancia >= 3;
+
+  const e = esc.escalas[esc.tipo];
+  const plantoes = esc.plantoes[esc.tipo] || [];
+  $('#mesSituacao').textContent = e
+    ? (esc.tipo === 'interna' ? 'escala interna' : 'escala oficial') +
+      (e.status === 'publicada' ? ' · publicada' : ' · rascunho')
+    : 'ainda não existe';
+
+  desenhaHoras();
+  desenhaDias(plantoes);
+  desenhaAfastamentos();
+
+  const selo = $('#seloEscala');
+  selo.textContent = e && e.status === 'publicada' ? 'Publicada' : 'Rascunho';
+  selo.className = 'selo ' + (e && e.status === 'publicada' ? 'publicada' : 'rascunho');
+  const vagos = contaVagos(plantoes);
+  $('#avisoVagos').textContent = vagos ? vagos + (vagos>1?' dias sem perito':' dia sem perito') : 'todos os dias cobertos';
+  $('#btnPublicar').disabled = !e || !podeEditarEscala();
+  $('#btnPublicar').textContent = e && e.status === 'publicada' ? 'Voltar para rascunho' : 'Publicar escala do mês';
+  $('#cartaoPublicar').classList.toggle('oculto', !podeEditarEscala());
+  $('#btnNovoAfastamento').classList.toggle('oculto', !podeEditarEscala());
+
+  if(esc.tipo === 'oficial') desenhaDocumento();
+}
+
+function contaVagos(plantoes){
+  const tem = new Set(plantoes.map(p=>p.dia));
+  let n = 0;
+  for(let d=1; d<=diasNoMes(esc.ano,esc.mes); d++) if(!tem.has(iso(esc.ano,esc.mes,d))) n++;
+  return n;
+}
+
+function desenhaHoras(){
+  const alvo = $('#cartaoHoras');
+  if(!esc.horas.length){
+    alvo.innerHTML = '<div style="font-size:13.5px;color:var(--suave)">Sem escala oficial neste mês, então não há horas a declarar.</div>';
+    return;
+  }
+  const maior = Math.max(...esc.horas.map(h=>Number(h.horas_calendario)||0), 1);
+  alvo.innerHTML =
+    '<h3 style="margin:0 0 4px;font-size:15px;font-weight:600">Horas no mês</h3>' +
+    '<div style="font-size:11.5px;color:var(--suave);margin-bottom:12px">Contadas sempre pela escala oficial.</div>' +
+    esc.horas.slice().sort((a,b)=>b.horas_calendario-a.horas_calendario).map(h=>{
+      const extra = Number(h.horas_extraordinarias)||0;
+      const det = h.chefe
+        ? h.plantoes + ' plantões · chefe, compensado por indenização'
+        : h.plantoes + ' plantões · ' + extra + ' h extraordinárias' +
+          (Number(h.dias_afastado) ? ' · ' + h.dias_afastado + ' dias afastado' : '');
+      return `<div class="horas-perito">
+        <div class="horas-topo"><b>${escapar(h.nome)}</b><span class="num">${h.horas_calendario} h</span></div>
+        <div class="horas-barra"><i style="width:${Math.round(h.horas_calendario/maior*100)}%;background:${corDoPerito(h.perito_id)}"></i></div>
+        <div class="horas-det">${escapar(det)}</div>
+      </div>`;
+    }).join('');
+}
+
+function desenhaDias(plantoes){
+  const total = diasNoMes(esc.ano, esc.mes);
+  const porDia = {};
+  plantoes.forEach(p=>{ (porDia[p.dia] = porDia[p.dia] || []).push(p); });
+  const afastadoEm = (pid, dia) => esc.afastamentos.some(a=>a.perito_id===pid && a.inicio<=dia && a.fim>=dia);
+
+  let html = '';
+  for(let d=1; d<=total; d++){
+    const dia = iso(esc.ano, esc.mes, d);
+    const lista = (porDia[dia] || []).slice().sort((a,b)=> (a.turno>b.turno?1:-1));
+    const sem = new Date(esc.ano, esc.mes-1, d).getDay();
+    const classes = ['dia'];
+    if(!lista.length) classes.push('vago');
+    if(sem===0 || sem===6) classes.push('fds');
+    if(esc.diaAberto === dia) classes.push('aberto');
+
+    const chips = lista.map(p=>{
+      const cor = corDoPerito(p.perito_id);
+      const conflito = afastadoEm(p.perito_id, dia) && esc.tipo === 'oficial';
+      return `<span class="turno" style="background:${cor}22;border-color:${cor}66;color:var(--texto)"
+        title="${conflito?'Perito afastado nesta data':''}">
+        ${escapar(esc.curtos[p.perito_id] || esc.nomes[p.perito_id] || '?')}
+        <i>${TURNOS[p.turno] ? TURNOS[p.turno].curto : p.turno}</i>${conflito?' ⚠':''}</span>`;
+    }).join('');
+
+    html += `<div class="${classes.join(' ')}" data-dia="${dia}">
+      <div class="dia-data"><b class="num">${d}</b><small>${SEMANA[sem]}</small></div>
+      <div class="dia-turnos">${chips || '<span class="dia-vazio">sem perito</span>'}</div>
+    </div>`;
+    if(esc.diaAberto === dia) html += editorDoDia(dia, lista);
+  }
+  $('#listaDias').innerHTML = html;
+}
+
+function editorDoDia(dia, lista){
+  if(!podeEditarEscala())
+    return '<div class="editor-dia"><div style="font-size:13px;color:var(--suave)">Só a chefia edita a escala.</div></div>';
+  const opcoesPerito = p => esc.peritosAtivos.map(x=>
+    `<option value="${x.id}"${x.id===p?' selected':''}>${escapar(x.nome)}</option>`).join('');
+  const opcoesTurno = t => Object.keys(TURNOS).map(k=>
+    `<option value="${k}"${k===t?' selected':''}>${TURNOS[k].curto} · ${TURNOS[k].faixa}</option>`).join('');
+
+  const d = Number(dia.slice(8));
+  const sem = new Date(esc.ano, esc.mes-1, d).getDay();
+  const nomeSemana = ['domingo','segunda','terça','quarta','quinta','sexta','sábado'][sem];
+
+  return `<div class="editor-dia">
+    <h4>Dia ${d} · ${nomeSemana}</h4>
+    ${lista.map(p=>`<div class="linha-plantao">
+      <select data-troca-perito="${p.id}">${opcoesPerito(p.perito_id)}</select>
+      <select data-troca-turno="${p.id}">${opcoesTurno(p.turno)}</select>
+      <button type="button" data-tira="${p.id}" aria-label="Remover">✕</button>
+    </div>`).join('')}
+    <div class="linha-plantao">
+      <select id="novoPerito">${opcoesPerito(null)}</select>
+      <select id="novoTurno">${opcoesTurno('24h')}</select>
+      <button type="button" data-poe="${dia}" aria-label="Adicionar" style="color:var(--ok)">+</button>
+    </div>
+  </div>`;
+}
+
+function desenhaAfastamentos(){
+  const alvo = $('#listaAfastamentos');
+  if(!esc.afastamentos.length){
+    alvo.innerHTML = '<div style="font-size:13px;color:var(--suave)">Ninguém afastado neste mês.</div>';
+    return;
+  }
+  const rotulo = { ferias:'Férias', licenca:'Licença', afastamento:'Afastamento' };
+  alvo.innerHTML = esc.afastamentos.map(a=>{
+    const i = a.inicio.slice(8)+'/'+a.inicio.slice(5,7), f = a.fim.slice(8)+'/'+a.fim.slice(5,7);
+    return `<div class="afast" style="border-left-color:${corDoPerito(a.perito_id)}">
+      <div><b>${escapar(esc.nomes[a.perito_id] || '?')}</b>
+        <small>${escapar(rotulo[a.tipo] || a.tipo)} · ${i} a ${f}</small></div>
+      ${podeEditarEscala() ? `<button type="button" data-tira-afast="${a.id}" aria-label="Remover">✕</button>` : ''}
+    </div>`;
+  }).join('');
+}
+
+/* ---------- edição ---------- */
+async function garanteEscala(){
+  if(esc.escalas[esc.tipo]) return esc.escalas[esc.tipo];
+  const { data, error } = await sb.from('escalas')
+    .insert({ ano:esc.ano, mes:esc.mes, tipo:esc.tipo, status:'rascunho' })
+    .select('*').single();
+  if(error){ recado('#recadoEscala','Não deu para criar a escala do mês: '+error.message); return null; }
+  esc.escalas[esc.tipo] = data;
+  return data;
+}
+
+$('#listaDias').addEventListener('click', async ev=>{
+  const bTira = ev.target.closest('[data-tira]');
+  const bPoe  = ev.target.closest('[data-poe]');
+  if(bTira){
+    ev.stopPropagation();
+    const { error } = await sb.from('escala_plantoes').delete().eq('id', bTira.dataset.tira);
+    if(error) return recado('#recadoEscala','Não deu para remover: '+error.message);
+    return carregarEscala();
+  }
+  if(bPoe){
+    ev.stopPropagation();
+    const e = await garanteEscala(); if(!e) return;
+    const { error } = await sb.from('escala_plantoes').insert({
+      escala_id: e.id, dia: bPoe.dataset.poe,
+      perito_id: Number($('#novoPerito').value), turno: $('#novoTurno').value
+    });
+    if(error) return recado('#recadoEscala', /unico|duplicate/i.test(error.message)
+      ? 'Esse perito já está nesse turno nesse dia.' : 'Não deu para adicionar: '+error.message);
+    return carregarEscala();
+  }
+  const linha = ev.target.closest('.dia');
+  if(!linha) return;
+  esc.diaAberto = esc.diaAberto === linha.dataset.dia ? null : linha.dataset.dia;
+  desenhaDias(esc.plantoes[esc.tipo] || []);
+});
+
+$('#listaDias').addEventListener('change', async ev=>{
+  const p = ev.target.closest('[data-troca-perito]');
+  const t = ev.target.closest('[data-troca-turno]');
+  const id = p ? p.dataset.trocaPerito : (t ? t.dataset.trocaTurno : null);
+  if(!id) return;
+  const mudanca = p ? { perito_id: Number(ev.target.value) } : { turno: ev.target.value };
+  const { error } = await sb.from('escala_plantoes').update(mudanca).eq('id', id);
+  if(error) return recado('#recadoEscala','Não deu para trocar: '+error.message);
+  carregarEscala();
+});
+
+$('#listaAfastamentos').addEventListener('click', async ev=>{
+  const b = ev.target.closest('[data-tira-afast]'); if(!b) return;
+  const { error } = await sb.from('afastamentos').delete().eq('id', b.dataset.tiraAfast);
+  if(error) return recado('#recadoAfastamento','Não deu para remover: '+error.message);
+  carregarEscala();
+});
+
+$('#btnNovoAfastamento').onclick = ()=>{
+  const f = $('#formAfastamento');
+  const abrindo = f.classList.contains('oculto');
+  f.classList.toggle('oculto', !abrindo);
+  $('#btnNovoAfastamento').textContent = abrindo ? 'Cancelar' : 'Registrar afastamento';
+  if(abrindo){
+    $('#a_perito').innerHTML = esc.peritosAtivos.map(p=>`<option value="${p.id}">${escapar(p.nome)}</option>`).join('');
+    $('#a_inicio').value = iso(esc.ano, esc.mes, 1);
+    $('#a_fim').value    = iso(esc.ano, esc.mes, diasNoMes(esc.ano, esc.mes));
+  }
+};
+
+$('#btnSalvarAfastamento').onclick = async ()=>{
+  recado('#recadoAfastamento','');
+  const i = $('#a_inicio').value, f = $('#a_fim').value;
+  if(!i || !f) return recado('#recadoAfastamento','Informe início e fim.');
+  if(f < i) return recado('#recadoAfastamento','O fim está antes do início.');
+  const { error } = await sb.from('afastamentos').insert({
+    perito_id: Number($('#a_perito').value), tipo: $('#a_tipo').value, inicio:i, fim:f });
+  if(error) return recado('#recadoAfastamento','Não deu para salvar: '+error.message);
+  $('#btnNovoAfastamento').click();
+  carregarEscala();
+};
+
+$('#btnPublicar').onclick = async ()=>{
+  recado('#recadoPublicar','');
+  const e = esc.escalas[esc.tipo]; if(!e) return;
+  const publicando = e.status !== 'publicada';
+  const mudanca = publicando
+    ? { status:'publicada', publicada_em:new Date().toISOString(), publicada_por: eu.id }
+    : { status:'rascunho',  publicada_em:null, publicada_por:null };
+  const { error } = await sb.from('escalas').update(mudanca).eq('id', e.id);
+  if(error) return recado('#recadoPublicar','Não deu para mudar: '+error.message);
+  recado('#recadoPublicar', publicando ? 'Escala publicada.' : 'Voltou para rascunho.', 'ok');
+  carregarEscala();
+};
+
+$('#mesAnterior').onclick = ()=>{
+  esc.mes--; if(esc.mes < 1){ esc.mes = 12; esc.ano--; }
+  esc.diaAberto = null; carregarEscala();
+};
+$('#mesSeguinte').onclick = ()=>{
+  esc.mes++; if(esc.mes > 12){ esc.mes = 1; esc.ano++; }
+  esc.diaAberto = null; carregarEscala();
+};
+
+document.querySelectorAll('[data-esc]').forEach(b=>{
+  b.onclick = ()=>{
+    document.querySelectorAll('[data-esc]').forEach(x=>x.classList.toggle('ativa', x===b));
+    esc.tipo = b.dataset.esc === 'Oficial' ? 'oficial' : 'interna';
+    esc.diaAberto = null;
+    $('#escInterna').classList.toggle('oculto', esc.tipo !== 'interna');
+    $('#escOficial').classList.toggle('oculto', esc.tipo !== 'oficial');
+    desenhaEscala();
+  };
+});
+
+/* ---------- documento oficial ---------- */
+function desenhaDocumento(){
+  const alvo = $('#documentoOficial');
+  const e = esc.escalas.oficial;
+  if(!e){ alvo.innerHTML = '<div class="vazio">Ainda não existe escala oficial neste mês.</div>'; return; }
+
+  const plantoes = esc.plantoes.oficial;
+  const porDia = {};
+  plantoes.forEach(p=>{ (porDia[p.dia] = porDia[p.dia] || []).push(p); });
+  const total = diasNoMes(esc.ano, esc.mes);
+  const primeiro = new Date(esc.ano, esc.mes-1, 1).getDay();
+
+  const celulas = [];
+  for(let i=0; i<primeiro; i++) celulas.push(null);
+  for(let d=1; d<=total; d++) celulas.push(d);
+  while(celulas.length % 7) celulas.push(null);
+
+  let corpo = '';
+  for(let i=0; i<celulas.length; i+=7){
+    const semana = celulas.slice(i, i+7);
+    corpo += '<tr>' + semana.map(d=>`<td class="dnum">${d||''}</td>`).join('') + '</tr>';
+    corpo += '<tr>' + semana.map(d=>{
+      if(!d) return '<td class="dcel"></td>';
+      const lista = (porDia[iso(esc.ano,esc.mes,d)] || []).slice().sort((a,b)=>(a.turno>b.turno?1:-1));
+      return '<td class="dcel">' + lista.map(p=>{
+        const nome = esc.curtos[p.perito_id] || esc.nomes[p.perito_id] || '?';
+        const t = p.turno === '24h' ? '' : ' (' + TURNOS[p.turno].curto + ')';
+        return `<div style="color:${corDoPerito(p.perito_id)}">${escapar(nome)}${t}</div>`;
+      }).join('') + '</td>';
+    }).join('') + '</tr>';
+  }
+
+  const identifica = p => [
+    p.nome_completo || p.nome,
+    p.matricula ? 'Matrícula n. ' + p.matricula : 'Matrícula n. [a cadastrar]',
+    p.cargo || 'Perito Oficial',
+    p.lotacao || ''
+  ].filter(Boolean).join(' / ');
+
+  const naEscala = esc.horas.filter(h=>!h.chefe);
+  const chefe = esc.peritosAtivos.find(p=>p.chefe);
+  const dados = p => esc.peritosAtivos.find(x=>x.id===p) || {};
+
+  const rotuloMes = MESES[esc.mes-1].charAt(0).toUpperCase() + MESES[esc.mes-1].slice(1) + '/' + esc.ano;
+  const obs = esc.afastamentos.map(a=>{
+    const p = dados(a.perito_id);
+    const ini = Number(a.inicio.slice(8)), fim = Number(a.fim.slice(8));
+    const mesIni = MESES[Number(a.inicio.slice(5,7))-1], mesFim = MESES[Number(a.fim.slice(5,7))-1];
+    const periodo = mesIni === mesFim
+      ? `do dia ${String(ini).padStart(2,'0')} ao dia ${String(fim).padStart(2,'0')} de ${mesFim.charAt(0).toUpperCase()+mesFim.slice(1)} de ${a.fim.slice(0,4)}`
+      : `de ${a.inicio.split('-').reverse().join('/')} a ${a.fim.split('-').reverse().join('/')}`;
+    const tipo = a.tipo === 'ferias' ? 'em gozo de férias' : 'afastado';
+    return `o perito ${p.nome_completo || esc.nomes[a.perito_id]}, matrícula n. ${p.matricula || '[a cadastrar]'}, ` +
+           `${p.cargo || 'Perito Oficial'} lotado no ${p.lotacao || ''} estará ${tipo} ${periodo}.`;
+  });
+
+  alvo.innerHTML = `<div class="doc">
+    <div class="orgao">Polícia Civil do Estado do Tocantins · Superintendência da Polícia Científica<br>
+      Diretoria do Instituto de Criminalística · 1º Núcleo Regional de Perícia Criminal – Araguatins</div>
+    <h3>ESCALA DE PLANTÃO – PERITO OFICIAL</h3>
+    <h3>1º NÚCLEO REGIONAL DE PERÍCIA CRIMINAL – ARAGUATINS</h3>
+    <div class="horarios">${rotuloMes}<br>
+      Horário de início e de término de cada plantão: ${escapar(cfgEscala('turno_24h'))}<br>
+      Horário de início e de término de cada plantão (12h): ${escapar(cfgEscala('turno_12h'))}<br>
+      Horário de início e de término de cada plantão (12h*): ${escapar(cfgEscala('turno_12h_noturno'))}</div>
+
+    <table><thead><tr>${['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado']
+      .map(s=>`<th>${s}</th>`).join('')}</tr></thead><tbody>${corpo}</tbody></table>
+
+    <table><thead><tr>
+      <th>NOME, MATRÍCULA, CARGO E LOTAÇÃO DOS POLICIAIS CIVIS INTEGRANTES DE “ESCALA REGULAR DE PLANTÃO”</th>
+      <th style="width:90px">NÚMERO DE HORAS DE “PLANTÃO EXTRAORDINÁRIO” (PERÍODO EXCEDENTE À CARGA HORÁRIA MENSAL DE ${escapar(cfgEscala('carga_horaria_mensal'))} HORAS)</th>
+    </tr></thead><tbody>
+      ${naEscala.map(h=>`<tr><td>${escapar(identifica(dados(h.perito_id)))}</td>
+        <td style="text-align:center">${h.horas_extraordinarias} h</td></tr>`).join('')}
+    </tbody></table>
+
+    ${chefe ? `<table><thead><tr>
+      <th>NOME, MATRÍCULA, CARGO E LOTAÇÃO DOS POLICIAIS CIVIS NÃO INTEGRANTES DE “ESCALA REGULAR DE PLANTÃO” COMPENSADOS POR INDENIZAÇÃO</th>
+      <th style="width:90px">NÚMERO DE HORAS DE “PLANTÃO EXTRAORDINÁRIO” COMPENSADOS POR INDENIZAÇÃO</th>
+    </tr></thead><tbody><tr>
+      <td>${escapar(identifica(chefe))} - CHEFE</td><td style="text-align:center">Expediente</td>
+    </tr></tbody></table>` : ''}
+
+    ${obs.length ? `<div class="obs"><b>Observações:</b> ${obs.map(escapar).join('<br>')}</div>` : ''}
+    ${e.observacoes ? `<div class="obs">${escapar(e.observacoes)}</div>` : ''}
+
+    <div class="assina"><b>${escapar((chefe && (chefe.nome_completo||chefe.nome)) || cfgEscala('chefe_nucleo')).toUpperCase()}</b>
+      <span>Chefe do 1º Núcleo Regional de Perícia Criminal - Araguatins</span></div>
+    <div class="assina"><b>${escapar(cfgEscala('diretor_pericia')).toUpperCase()}</b>
+      <span>Diretor de Perícia Criminal</span></div>
+  </div>
+  <div class="cartao" style="margin-top:14px">
+    <div style="font-size:13px;color:var(--suave);line-height:1.6">
+      Para gerar o arquivo no modelo oficial, peça ao seu Claude para exportar a escala deste mês.
+    </div>
+  </div>`;
+}
+
+let cfgCache = null;
+function cfgEscala(chave){
+  if(!cfgCache) return '';
+  const l = cfgCache.find(c=>c.chave===chave);
+  return l ? l.valor : '';
+}
+async function carregaConfig(){
+  if(cfgCache) return cfgCache;
+  const { data } = await sb.from('configuracoes').select('chave,valor');
+  cfgCache = data || [];
+  return cfgCache;
+}
 
 /* ---------- registros de teste ---------- */
 async function contarTestes(){
