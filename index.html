@@ -501,6 +501,15 @@ nav button.ativo{color:var(--destaque)}
         <div class="cartao" id="cartaoHoras"><div class="carregando">Carregando…</div></div>
         <div id="listaDias"></div>
 
+        <div id="escOficial" class="oculto">
+          <div class="cartao">
+            <div style="font-size:13.5px;color:var(--suave);line-height:1.6">
+              Documento no modelo, para assinatura e envio. Visível apenas a peritos.
+            </div>
+          </div>
+          <div id="documentoOficial"><div class="carregando">Carregando…</div></div>
+        </div>
+
         <div class="cartao">
           <h3 style="margin:0 0 10px;font-size:15px;font-weight:600">Férias e afastamentos</h3>
           <div id="listaAfastamentos"></div>
@@ -550,14 +559,6 @@ nav button.ativo{color:var(--destaque)}
         </div>
       </div>
 
-      <div id="escOficial" class="oculto">
-        <div class="cartao">
-          <div style="font-size:13.5px;color:var(--suave);line-height:1.6">
-            Documento no modelo, para assinatura e envio. Visível apenas a peritos.
-          </div>
-        </div>
-        <div id="documentoOficial"><div class="carregando">Carregando…</div></div>
-      </div>
     </div>
 
     <!-- ---- conta ---- -->
@@ -596,7 +597,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.11</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.12</p>
     </div>
   </main>
 
@@ -1874,7 +1875,7 @@ document.querySelectorAll('[data-esc]').forEach(b=>{
     document.querySelectorAll('[data-esc]').forEach(x=>x.classList.toggle('ativa', x===b));
     esc.tipo = b.dataset.esc === 'Oficial' ? 'oficial' : 'interna';
     esc.diaAberto = null;
-    $('#escInterna').classList.toggle('oculto', esc.tipo !== 'interna');
+    /* a grade de dias serve aos dois tipos; o documento só à oficial */
     $('#escOficial').classList.toggle('oculto', esc.tipo !== 'oficial');
     desenhaEscala();
   };
