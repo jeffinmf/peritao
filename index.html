@@ -451,7 +451,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.9</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.10</p>
     </div>
   </main>
 
@@ -1274,6 +1274,11 @@ async function carregaPeritos(){
   return peritosCache;
 }
 
+/* O exame definitivo de drogas é feito pelo núcleo especializado de Palmas.
+   Ele aparece no Entrada de Cartório, mas não é trabalho deste núcleo e não pode
+   entrar na estatística daqui. */
+const EXAME_DE_OUTRO_NUCLEO = /qu[ií]mico\s+definitivo/i;
+
 $('#btnAplicarSync').onclick = async ()=>{
   recado('#recadoSync','');
   $('#resultadoSync').innerHTML = '';
@@ -1286,7 +1291,7 @@ $('#btnAplicarSync').onclick = async ()=>{
   recado('#recadoSync','Aplicando '+linhas.length+' linha(s)…','aviso');
   const peritos = await carregaPeritos();
   const saida = [];
-  let atualizadas=0, importadas=0, iguais=0, erros=0;
+  let atualizadas=0, importadas=0, iguais=0, erros=0, ignoradas=0;
 
   for(const linha of linhas){
     const c = linha.split('|').map(x=>x.trim());
@@ -1336,6 +1341,11 @@ $('#btnAplicarSync').onclick = async ()=>{
         } else { saida.push({ acao:'igual', protocolo, detalhe:'nada a mudar' }); iguais++; }
 
       } else {
+        if(EXAME_DE_OUTRO_NUCLEO.test(tipo || '')){
+          saida.push({ acao:'ignorada', protocolo,
+            detalhe:'exame definitivo de drogas — é do núcleo especializado' });
+          ignoradas++; continue;
+        }
         const t = acharPorNome(referencias.tipos, tipo);
         const p = acharPorNome(peritos, peritoNome);
         const novo = {
@@ -1374,14 +1384,17 @@ $('#btnAplicarSync').onclick = async ()=>{
 
   $('#btnAplicarSync').disabled = false;
   const classe = a => a==='atualizada'?'ok' : a==='importada'?'novo' : a==='erro'?'erro' : 'igual';
+  const resumo = [
+    atualizadas+' atualizada(s)', importadas+' importada(s)',
+    iguais+' sem mudança', ignoradas ? ignoradas+' de outro núcleo' : null,
+    erros+' com erro'
+  ].filter(Boolean).join(', ') + '.';
   $('#resultadoSync').innerHTML = `<div class="cartao">${saida.map(r=>
     `<div class="sync-linha"><span class="sync-acao ${classe(r.acao)}">${escapar(r.acao)}</span>
      <span style="flex:0 0 70px">${escapar(r.protocolo)}</span>
      <span style="flex:1;color:var(--suave)">${escapar(r.detalhe)}</span></div>`).join('')}</div>`;
 
-  recado('#recadoSync',
-    `${atualizadas} atualizada(s), ${importadas} importada(s), ${iguais} sem mudança, ${erros} com erro.`,
-    erros ? 'aviso' : 'ok');
+  recado('#recadoSync', resumo, erros ? 'aviso' : 'ok');
   carregarGalileu();
 };
 
