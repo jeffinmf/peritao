@@ -239,21 +239,35 @@ nav button.ativo{color:var(--destaque)}
 .selo.rascunho{background:rgba(232,184,75,.18);color:#f6e2b0}
 .selo.publicada{background:rgba(63,178,127,.18);color:#bdf0d9}
 
-/* documento oficial */
-.doc{background:#fff;color:#16202e;border-radius:10px;padding:18px 16px;font-size:12px;line-height:1.45;
-  overflow-x:auto}
-.doc h3{margin:0;font-size:13px;text-align:center;font-weight:700}
-.doc .orgao{font-size:10.5px;color:#4f5b6b;text-align:center;line-height:1.4;margin-bottom:12px}
-.doc .horarios{text-align:center;font-size:11px;margin:6px 0 12px}
-.doc table{width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:12px}
-.doc th,.doc td{border:1px solid #16202e;padding:4px 3px;vertical-align:middle}
-.doc th{background:#eceff3;font-weight:600;text-align:center;font-size:9.5px}
-.doc td.dnum{text-align:center;font-weight:700;background:#f8f9fb;padding:2px}
-.doc td.dcel{text-align:center;height:34px;font-size:9.5px}
-.doc .obs{border:1px solid #16202e;padding:8px 9px;font-size:10.5px;margin-bottom:14px}
-.doc .assina{text-align:center;margin:14px 0}
-.doc .assina b{display:block;font-size:11px}
-.doc .assina span{font-size:10.5px;color:#4f5b6b}
+/* documento oficial — réplica do modelo em Word, proporção A4 */
+.folha-rolo{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:14px}
+.doc{width:794px;min-height:1123px;box-sizing:border-box;background:#fff;color:#000;
+  padding:38px 57px 40px;font-family:Arial,Helvetica,sans-serif;font-size:12pt;line-height:1.3}
+.doc .timbre{display:flex;align-items:flex-start;gap:14px;margin-bottom:26px}
+.doc .timbre img{width:150px;height:auto;flex:none}
+.doc .timbre .vazio-timbre{width:150px;height:98px;flex:none;border:1px dashed #9aa6b4;border-radius:3px;
+  display:flex;align-items:center;justify-content:center;text-align:center;
+  font-size:8pt;color:#6b7684;padding:4px;box-sizing:border-box}
+.doc .orgao{font-family:"Segoe UI",system-ui,sans-serif;color:#2f3b87;font-size:10.5pt;line-height:1.25}
+.doc .orgao b{font-weight:700}
+.doc .contato{font-family:"Segoe UI",system-ui,sans-serif;color:#2f3b87;font-size:9pt;
+  line-height:1.3;border-left:1px solid #2f3b87;padding-left:12px;margin-left:2px}
+.doc .contato b{font-weight:700}
+.doc h3{margin:0;font-size:12pt;text-align:center;font-weight:700;line-height:1.25}
+.doc .horarios{text-align:center;font-size:12pt;margin:14px 0 20px;line-height:1.3}
+.doc table{width:100%;border-collapse:collapse;margin-bottom:16px}
+.doc th,.doc td{border:1px solid #000;padding:2px 3px;vertical-align:middle}
+.doc th{background:#d9d9d9;font-weight:700;text-align:center;font-size:10pt}
+.doc td.dnum{text-align:center;font-weight:700;font-size:11pt;padding:1px 2px}
+.doc td.dcel{text-align:center;height:46px;font-size:12pt}
+.doc td.dcel .duplo{font-size:10pt}
+.doc table.pessoas td{font-size:10pt;padding:4px 5px}
+.doc table.pessoas th{font-size:9pt;padding:5px}
+.doc .obs{border:1px solid #000;padding:6px 7px;font-size:10pt;margin-bottom:22px;line-height:1.35}
+.doc .assina{text-align:center;margin:26px 0}
+.doc .assina b{display:block;font-size:11pt;font-weight:700}
+.doc .assina span{font-size:11pt}
+.doc .nota-doc{margin-top:26px;font-size:9pt;color:#6b7684;text-align:center;line-height:1.4}
 </style>
 </head>
 <body>
@@ -622,7 +636,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.13</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.14</p>
     </div>
   </main>
 
@@ -1683,7 +1697,7 @@ function desenhaEscala(){
   $('#cartaoPublicar').classList.toggle('oculto', !podeEditarEscala());
   $('#btnNovoAfastamento').classList.toggle('oculto', !podeEditarEscala());
 
-  if(esc.tipo === 'oficial') desenhaDocumento();
+  if(esc.tipo === 'oficial') carregaTimbre().then(desenhaDocumento);
 }
 
 function contaVagos(plantoes){
@@ -1971,10 +1985,11 @@ function desenhaDocumento(){
     corpo += '<tr>' + semana.map(d=>{
       if(!d) return '<td class="dcel"></td>';
       const lista = (porDia[iso(esc.ano,esc.mes,d)] || []).slice().sort((a,b)=>(a.turno>b.turno?1:-1));
-      return '<td class="dcel">' + lista.map(p=>{
+      /* o modelo em Word sai todo em preto; a cor é só da tela interna */
+      return `<td class="dcel${lista.length > 1 ? ' duplo' : ''}">` + lista.map(p=>{
         const nome = esc.curtos[p.perito_id] || esc.nomes[p.perito_id] || '?';
         const t = p.turno === '24h' ? '' : ' (' + TURNOS[p.turno].curto + ')';
-        return `<div style="color:${corDoPerito(p.perito_id)}">${escapar(nome)}${t}</div>`;
+        return `<div>${escapar(nome)}${t}</div>`;
       }).join('') + '</td>';
     }).join('') + '</tr>';
   }
@@ -2003,9 +2018,26 @@ function desenhaDocumento(){
            `${p.cargo || 'Perito Oficial'} lotado no ${p.lotacao || ''} estará ${tipo} ${periodo}.`;
   });
 
-  alvo.innerHTML = `<div class="doc">
-    <div class="orgao">Polícia Civil do Estado do Tocantins · Superintendência da Polícia Científica<br>
-      Diretoria do Instituto de Criminalística · 1º Núcleo Regional de Perícia Criminal – Araguatins</div>
+  /* no documento o chefe entra nas duas tabelas: aqui com as horas dele,
+     e de novo abaixo como compensado por indenização */
+  const todos = esc.horas.slice()
+    .sort((a,b)=>identifica(dados(a.perito_id)).localeCompare(identifica(dados(b.perito_id)),'pt'));
+
+  const timbre = esc.timbreUrl
+    ? `<img src="${esc.timbreUrl}" alt="Brasões da Polícia Civil e da Polícia Científica do Tocantins">`
+    : `<div class="vazio-timbre">timbre do modelo${podeEditarEscala() ? '<br>— enviar abaixo' : ''}</div>`;
+
+  alvo.innerHTML = `<div class="folha-rolo"><div class="doc">
+    <div class="timbre">
+      ${timbre}
+      <div class="orgao">Polícia Civil do Estado do Tocantins<br>
+        <b>Superintendência da Polícia Científica</b><br>
+        <b>Diretoria do Instituto de Criminalística</b><br>
+        <b>1º Núcleo Regional de Perícia Criminal-</b><br>Araguatins</div>
+      <div class="contato">Rua Nero Macedo, 911, Centro<br>Araguatins, CEP: 77.950-000<br>
+        <b>10npc@ssp.to.gov.br</b><br>63 3474-2217</div>
+    </div>
+
     <h3>ESCALA DE PLANTÃO – PERITO OFICIAL</h3>
     <h3>1º NÚCLEO REGIONAL DE PERÍCIA CRIMINAL – ARAGUATINS</h3>
     <div class="horarios">${rotuloMes}<br>
@@ -2016,34 +2048,70 @@ function desenhaDocumento(){
     <table><thead><tr>${['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado']
       .map(s=>`<th>${s}</th>`).join('')}</tr></thead><tbody>${corpo}</tbody></table>
 
-    <table><thead><tr>
+    <table class="pessoas"><thead><tr>
       <th>NOME, MATRÍCULA, CARGO E LOTAÇÃO DOS POLICIAIS CIVIS INTEGRANTES DE “ESCALA REGULAR DE PLANTÃO”</th>
-      <th style="width:90px">NÚMERO DE HORAS DE “PLANTÃO EXTRAORDINÁRIO” (PERÍODO EXCEDENTE À CARGA HORÁRIA MENSAL DE ${escapar(cfgEscala('carga_horaria_mensal'))} HORAS)</th>
+      <th style="width:150px">NÚMERO DE HORAS DE “PLANTÃO EXTRAORDINÁRIO” (PERÍODO EXCEDENTE À CARGA HORÁRIA MENSAL DE ${escapar(cfgEscala('carga_horaria_mensal'))} HORAS)</th>
     </tr></thead><tbody>
-      ${naEscala.map(h=>`<tr><td>${escapar(identifica(dados(h.perito_id)))}</td>
+      ${todos.map(h=>`<tr><td>${escapar(identifica(dados(h.perito_id)))}</td>
         <td style="text-align:center">${h.horas_extraordinarias} h</td></tr>`).join('')}
     </tbody></table>
 
-    ${chefe ? `<table><thead><tr>
+    ${chefe ? `<table class="pessoas"><thead><tr>
       <th>NOME, MATRÍCULA, CARGO E LOTAÇÃO DOS POLICIAIS CIVIS NÃO INTEGRANTES DE “ESCALA REGULAR DE PLANTÃO” COMPENSADOS POR INDENIZAÇÃO</th>
-      <th style="width:90px">NÚMERO DE HORAS DE “PLANTÃO EXTRAORDINÁRIO” COMPENSADOS POR INDENIZAÇÃO</th>
+      <th style="width:150px">NÚMERO DE HORAS DE “PLANTÃO EXTRAORDINÁRIO” COMPENSADOS POR INDENIZAÇÃO</th>
     </tr></thead><tbody><tr>
       <td>${escapar(identifica(chefe))} - CHEFE</td><td style="text-align:center">Expediente</td>
     </tr></tbody></table>` : ''}
 
-    ${obs.length ? `<div class="obs"><b>Observações:</b> ${obs.map(escapar).join('<br>')}</div>` : ''}
+    ${obs.length ? `<div class="obs"><b>Observações:</b>&nbsp; ${obs.map(escapar).join('<br>')}</div>` : ''}
     ${e.observacoes ? `<div class="obs">${escapar(e.observacoes)}</div>` : ''}
 
     <div class="assina"><b>${escapar((chefe && (chefe.nome_completo||chefe.nome)) || cfgEscala('chefe_nucleo')).toUpperCase()}</b>
       <span>Chefe do 1º Núcleo Regional de Perícia Criminal - Araguatins</span></div>
     <div class="assina"><b>${escapar(cfgEscala('diretor_pericia')).toUpperCase()}</b>
       <span>Diretor de Perícia Criminal</span></div>
-  </div>
-  <div class="cartao" style="margin-top:14px">
+
+    <div class="nota-doc">O despacho e a assinatura do Superintendente vêm do modelo em Word
+      e aparecem no arquivo exportado.</div>
+  </div></div>
+
+  <div class="cartao">
     <div style="font-size:13px;color:var(--suave);line-height:1.6">
-      Para gerar o arquivo no modelo oficial, peça ao seu Claude para exportar a escala deste mês.
+      Esta é a prévia, para conferir o conteúdo. O arquivo que se assina sai do modelo em Word,
+      com o timbre e o despacho — peça ao seu Claude para exportar a escala deste mês.
     </div>
+    ${podeEditarEscala() ? `<div style="height:10px"></div>
+      <label class="campo">
+        <span>Timbre do documento ${esc.timbreUrl ? '(trocar)' : '(enviar)'}</span>
+        <input type="file" id="arqTimbre" accept="image/png,image/jpeg,image/webp">
+      </label>
+      <div class="recado" id="recadoTimbre"></div>
+      <div style="font-size:12px;color:var(--suave);line-height:1.5">
+        Recorte os brasões do cabeçalho do modelo. Fica guardado no Peritão, à vista só de quem tem login.
+      </div>` : ''}
   </div>`;
+
+  const campo = $('#arqTimbre');
+  if(campo) campo.onchange = async ()=>{
+    const arq = campo.files && campo.files[0];
+    if(!arq) return;
+    if(arq.size > 2*1024*1024) return recado('#recadoTimbre','A imagem passa de 2 MB. Reduza antes.');
+    recado('#recadoTimbre','Enviando…');
+    const { error } = await sb.storage.from('interno')
+      .upload('escala/timbre.webp', arq, { contentType: arq.type, upsert: true });
+    if(error) return recado('#recadoTimbre','Não deu para enviar: '+error.message);
+    esc.timbreUrl = null;
+    await carregaTimbre();
+    recado('#recadoTimbre','Timbre guardado.','ok');
+    desenhaDocumento();
+  };
+}
+
+async function carregaTimbre(){
+  if(esc.timbreUrl !== undefined && esc.timbreUrl !== null) return esc.timbreUrl;
+  const { data, error } = await sb.storage.from('interno').download('escala/timbre.webp');
+  esc.timbreUrl = (error || !data) ? '' : URL.createObjectURL(data);
+  return esc.timbreUrl;
 }
 
 let cfgCache = null;
