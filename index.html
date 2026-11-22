@@ -188,22 +188,39 @@ nav button.ativo{color:var(--destaque)}
 .horas-barra i{display:block;height:100%;border-radius:4px}
 .horas-det{font-size:11.5px;color:var(--suave)}
 
-.dia{display:flex;gap:11px;padding:10px 12px;border-radius:12px;background:var(--cartao);
-  border:1px solid var(--borda);margin-bottom:7px;cursor:pointer;align-items:flex-start}
-.dia.vago{border-style:dashed;border-color:rgba(232,184,75,.5)}
-.dia.fds{background:rgba(255,255,255,.035)}
-.dia.aberto{border-color:var(--destaque)}
-.dia-data{flex:0 0 42px;text-align:center}
-.dia-data b{display:block;font-size:19px;line-height:1.1;font-variant-numeric:tabular-nums}
-.dia-data small{font-size:10.5px;color:var(--suave);text-transform:uppercase;letter-spacing:.3px}
-.dia-turnos{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:5px;padding-top:2px}
-.turno{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:999px;
-  font-size:12.5px;font-weight:600;border:1px solid transparent}
-.turno i{font-style:normal;font-weight:500;opacity:.8;font-size:11px}
-.dia-vazio{font-size:12.5px;color:var(--alerta);padding-top:5px}
+.chips-mes{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-bottom:12px}
+.chip-mes{height:36px;padding:0 13px;border:1px solid var(--borda);border-radius:999px;
+  background:transparent;color:var(--texto);font:inherit;font-size:12.5px;cursor:pointer}
+.chip-mes.ativo{background:var(--destaque);border-color:var(--destaque);color:#15222f;font-weight:600}
+.chips-mes .ate{font-size:11.5px;color:var(--suave)}
+
+.grade-rolo{overflow-x:auto;border:1px solid var(--borda);border-radius:12px;
+  background:var(--cartao);margin-bottom:9px;-webkit-overflow-scrolling:touch}
+.grade{min-width:700px}
+.grade-cab,.grade-corpo{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.grade-cab div{padding:9px 0;text-align:center;font-size:11.5px;font-weight:500;
+  color:var(--suave);background:rgba(255,255,255,.04)}
+.cel{min-height:98px;box-sizing:border-box;padding:6px;border-top:1px solid var(--borda);
+  border-left:1px solid var(--borda);display:flex;flex-direction:column;gap:4px;cursor:pointer}
+.cel:nth-child(7n+1){border-left:0}
+.cel.fora{background:rgba(255,255,255,.02);cursor:default}
+.cel.vago{background:rgba(232,184,75,.07)}
+.cel.aberta{outline:2px solid var(--destaque);outline-offset:-2px}
+.cel-topo{display:flex;justify-content:space-between;align-items:center}
+.cel-topo b{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.cel-topo small{font-size:10px;color:var(--alerta);font-weight:600}
+.cel.vago .cel-topo b{color:var(--alerta)}
+.turno{display:flex;flex-direction:column;padding:4px 7px;border-radius:5px;
+  border-left:3px solid transparent;font-size:12px;text-align:left}
+.turno b{font-weight:600;font-size:12px;line-height:1.25}
+.turno i{font-style:normal;font-size:10px;color:var(--suave);font-variant-numeric:tabular-nums}
+
+.legenda{display:flex;flex-wrap:wrap;gap:6px 15px;font-size:11.5px;color:var(--suave);
+  padding:0 2px;margin-bottom:16px}
+.legenda b{color:var(--texto);font-weight:600}
 
 .editor-dia{background:var(--fundo2);border:1px solid var(--destaque);border-radius:12px;
-  padding:12px;margin:-3px 0 9px}
+  padding:12px;margin-bottom:16px}
 .editor-dia h4{margin:0 0 10px;font-size:14px;font-weight:600}
 .linha-plantao{display:flex;gap:7px;align-items:center;margin-bottom:8px}
 .linha-plantao select{flex:1;min-width:0;padding:11px}
@@ -499,7 +516,15 @@ nav button.ativo{color:var(--destaque)}
 
       <div id="escInterna">
         <div class="cartao" id="cartaoHoras"><div class="carregando">Carregando…</div></div>
-        <div id="listaDias"></div>
+        <div class="chips-mes" id="chipsMes"></div>
+        <div class="grade-rolo"><div class="grade" id="gradeMes"></div></div>
+        <div class="legenda">
+          <span><b>24h</b> 8:00 às 8:00</span>
+          <span><b>12h</b> 8:00 às 20:00</span>
+          <span><b>12h*</b> 20:00 às 8:00</span>
+          <span style="color:var(--alerta)">Dias sem cobertura aparecem em laranja</span>
+        </div>
+        <div id="editorDia"></div>
 
         <div id="escOficial" class="oculto">
           <div class="cartao">
@@ -597,7 +622,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.12</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.13</p>
     </div>
   </main>
 
@@ -1589,7 +1614,7 @@ async function carregarEscala(){
   if(!esc.ano){ const h = new Date(); esc.ano = h.getFullYear(); esc.mes = h.getMonth()+1; }
   recado('#recadoEscala','');
   if(!navigator.onLine){
-    $('#listaDias').innerHTML = '<div class="vazio">A escala precisa de conexão.</div>';
+    $('#gradeMes').innerHTML = '<div class="vazio">A escala precisa de conexão.</div>';
     return;
   }
   $('#mesRotulo').firstChild.textContent =
@@ -1643,6 +1668,7 @@ function desenhaEscala(){
       (e.status === 'publicada' ? ' · publicada' : ' · rascunho')
     : 'ainda não existe';
 
+  desenhaChipsMes();
   desenhaHoras();
   desenhaDias(plantoes);
   desenhaAfastamentos();
@@ -1691,38 +1717,67 @@ function desenhaHoras(){
     }).join('');
 }
 
+function desenhaChipsMes(){
+  const lim = mesLimite();
+  let html = '';
+  for(let i=0; i<=3; i++){
+    const m = ((lim.mes - 1 + i) % 12) + 1;
+    const a = lim.ano + Math.floor((lim.mes - 1 + i) / 12);
+    const ativo = (a === esc.ano && m === esc.mes);
+    html += `<button type="button" class="chip-mes${ativo?' ativo':''}" data-mes="${a}-${m}">`
+          + MESES[m-1].slice(0,3).replace(/^./,c=>c.toUpperCase()) + '/' + String(a).slice(2) + '</button>';
+  }
+  const ultimoM = ((lim.mes - 1 + 3) % 12) + 1;
+  const ultimoA = lim.ano + Math.floor((lim.mes - 1 + 3) / 12);
+  html += `<span class="ate">Programação liberada até ${MESES[ultimoM-1].replace(/^./,c=>c.toUpperCase())}/${ultimoA}</span>`;
+  $('#chipsMes').innerHTML = html;
+}
+
 function desenhaDias(plantoes){
   const total = diasNoMes(esc.ano, esc.mes);
   const porDia = {};
   plantoes.forEach(p=>{ (porDia[p.dia] = porDia[p.dia] || []).push(p); });
-  const afastadoEm = (pid, dia) => esc.afastamentos.some(a=>a.perito_id===pid && a.inicio<=dia && a.fim>=dia);
+  const afastadoEm = (pid, dia) =>
+    esc.afastamentos.some(a=>a.perito_id===pid && a.inicio<=dia && a.fim>=dia);
 
-  let html = '';
-  for(let d=1; d<=total; d++){
+  const primeiro = new Date(esc.ano, esc.mes-1, 1).getDay();
+  const celulas = [];
+  for(let i=0; i<primeiro; i++) celulas.push(null);
+  for(let d=1; d<=total; d++) celulas.push(d);
+  while(celulas.length % 7) celulas.push(null);
+
+  let html = '<div class="grade-cab">'
+    + ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado']
+        .map(s=>`<div>${s}</div>`).join('')
+    + '</div><div class="grade-corpo">';
+
+  celulas.forEach(d=>{
+    if(!d){ html += '<div class="cel fora"></div>'; return; }
     const dia = iso(esc.ano, esc.mes, d);
-    const lista = (porDia[dia] || []).slice().sort((a,b)=> (a.turno>b.turno?1:-1));
-    const sem = new Date(esc.ano, esc.mes-1, d).getDay();
-    const classes = ['dia'];
+    const lista = (porDia[dia] || []).slice().sort((a,b)=>(a.turno>b.turno?1:-1));
+    const classes = ['cel'];
     if(!lista.length) classes.push('vago');
-    if(sem===0 || sem===6) classes.push('fds');
-    if(esc.diaAberto === dia) classes.push('aberto');
+    if(esc.diaAberto === dia) classes.push('aberta');
 
-    const chips = lista.map(p=>{
+    const turnos = lista.map(p=>{
       const cor = corDoPerito(p.perito_id);
+      const t = TURNOS[p.turno] || { curto:p.turno, faixa:'' };
       const conflito = afastadoEm(p.perito_id, dia) && esc.tipo === 'oficial';
-      return `<span class="turno" style="background:${cor}22;border-color:${cor}66;color:var(--texto)"
-        title="${conflito?'Perito afastado nesta data':''}">
-        ${escapar(esc.curtos[p.perito_id] || esc.nomes[p.perito_id] || '?')}
-        <i>${TURNOS[p.turno] ? TURNOS[p.turno].curto : p.turno}</i>${conflito?' ⚠':''}</span>`;
+      return `<span class="turno" style="background:${cor}1f;border-left-color:${cor}"
+          title="${conflito?'Perito afastado nesta data':''}">
+          <b>${escapar(esc.curtos[p.perito_id] || esc.nomes[p.perito_id] || '?')}${conflito?' ⚠':''}</b>
+          <i>${t.curto}${t.faixa ? ' · ' + t.faixa : ''}</i></span>`;
     }).join('');
 
     html += `<div class="${classes.join(' ')}" data-dia="${dia}">
-      <div class="dia-data"><b class="num">${d}</b><small>${SEMANA[sem]}</small></div>
-      <div class="dia-turnos">${chips || '<span class="dia-vazio">sem perito</span>'}</div>
-    </div>`;
-    if(esc.diaAberto === dia) html += editorDoDia(dia, lista);
-  }
-  $('#listaDias').innerHTML = html;
+      <div class="cel-topo"><b>${d}</b><small>${lista.length ? '' : 'sem perito'}</small></div>
+      ${turnos}</div>`;
+  });
+
+  $('#gradeMes').innerHTML = html + '</div>';
+  $('#editorDia').innerHTML = esc.diaAberto
+    ? editorDoDia(esc.diaAberto, porDia[esc.diaAberto] || [])
+    : '';
 }
 
 function editorDoDia(dia, lista){
@@ -1780,17 +1835,32 @@ async function garanteEscala(){
   return data;
 }
 
-$('#listaDias').addEventListener('click', async ev=>{
+$('#gradeMes').addEventListener('click', ev=>{
+  const cel = ev.target.closest('.cel');
+  if(!cel || cel.classList.contains('fora')) return;
+  esc.diaAberto = esc.diaAberto === cel.dataset.dia ? null : cel.dataset.dia;
+  desenhaDias(esc.plantoes[esc.tipo] || []);
+  const ed = $('#editorDia');
+  if(esc.diaAberto && ed.firstElementChild)
+    ed.firstElementChild.scrollIntoView({ block:'nearest', behavior:'smooth' });
+});
+
+$('#chipsMes').addEventListener('click', ev=>{
+  const b = ev.target.closest('[data-mes]'); if(!b) return;
+  const [a,m] = b.dataset.mes.split('-').map(Number);
+  esc.ano = a; esc.mes = m; esc.diaAberto = null;
+  carregarEscala();
+});
+
+$('#editorDia').addEventListener('click', async ev=>{
   const bTira = ev.target.closest('[data-tira]');
   const bPoe  = ev.target.closest('[data-poe]');
   if(bTira){
-    ev.stopPropagation();
     const { error } = await sb.from('escala_plantoes').delete().eq('id', bTira.dataset.tira);
     if(error) return recado('#recadoEscala','Não deu para remover: '+error.message);
     return carregarEscala();
   }
   if(bPoe){
-    ev.stopPropagation();
     const e = await garanteEscala(); if(!e) return;
     const { error } = await sb.from('escala_plantoes').insert({
       escala_id: e.id, dia: bPoe.dataset.poe,
@@ -1800,13 +1870,9 @@ $('#listaDias').addEventListener('click', async ev=>{
       ? 'Esse perito já está nesse turno nesse dia.' : 'Não deu para adicionar: '+error.message);
     return carregarEscala();
   }
-  const linha = ev.target.closest('.dia');
-  if(!linha) return;
-  esc.diaAberto = esc.diaAberto === linha.dataset.dia ? null : linha.dataset.dia;
-  desenhaDias(esc.plantoes[esc.tipo] || []);
 });
 
-$('#listaDias').addEventListener('change', async ev=>{
+$('#editorDia').addEventListener('change', async ev=>{
   const p = ev.target.closest('[data-troca-perito]');
   const t = ev.target.closest('[data-troca-turno]');
   const id = p ? p.dataset.trocaPerito : (t ? t.dataset.trocaTurno : null);
