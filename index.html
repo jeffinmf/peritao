@@ -899,7 +899,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.35</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.36</p>
     </div>
   </main>
 
@@ -1775,8 +1775,8 @@ function acharPorNome(lista, nome){
 let peritosCache = null;
 async function carregaPeritos(){
   if(peritosCache) return peritosCache;
-  const { data } = await sb.from('peritos').select('id,nome,nome_completo');
-  peritosCache = (data||[]).map(p=>({ id:p.id, nome:p.nome_completo || p.nome }));
+  const { data } = await sb.from('peritos').select('id,nome,nome_completo,vinculo');
+  peritosCache = (data||[]).map(p=>({ id:p.id, nome:p.nome_completo || p.nome, vinculo:p.vinculo }));
   return peritosCache;
 }
 
@@ -1904,13 +1904,20 @@ $('#btnAplicarSync').onclick = async ()=>{
           ignoradas++; continue;
         }
         const t = acharPorNome(referencias.tipos, tipo);
-        const p = acharPorNome(peritos, peritoNome);
+        let p = acharPorNome(peritos, peritoNome);
+        /* O "por {perito}" do Entrada de Cartório às vezes é quem LANÇOU o registro
+           no cartório, não quem fez o exame. Aconteceu com sete ocorrências de 2026
+           atribuídas à Lusinete, do apoio administrativo, sendo de outros peritos.
+           Nome de alguém do apoio não vira perito: a ocorrência entra sem perito e
+           com o motivo escrito, para alguém dizer de quem é. */
+        const doCartorio = p && p.vinculo === 'apoio';
+        if(doCartorio) p = null;
         const novo = {
           protocolo, caso: caso || null,
           status: st || 'recebida',
           tipo_exame_id: t ? t.id : null,
           tipo_exame_bruto: t ? null : (tipo || null),
-          perito_id: p ? p.id : eu.id,
+          perito_id: doCartorio ? null : (p ? p.id : eu.id),
           criado_por: eu.id,
           origem: 'galileu',
           nome_vitima: envolvido || null,
@@ -1920,9 +1927,10 @@ $('#btnAplicarSync').onclick = async ()=>{
           municipio_id: daUnidade.municipio_id || null,
           acionamento_em: dataBRparaISO(entrada) ? dataBRparaISO(entrada)+'T00:00:00' : null,
           revisar: true,
-          revisar_motivo: daUnidade.municipio_id
-            ? 'Importada do Galileu — faltam local e horários'
-            : 'Importada do Galileu — faltam município, local e horários'
+          revisar_motivo: (doCartorio ? 'Importada do Galileu — SEM PERITO: o nome do '
+              + 'Galileu é de quem lançou no cartório. ' : 'Importada do Galileu — ')
+            + (daUnidade.municipio_id ? 'faltam local e horários'
+                                      : 'faltam município, local e horários')
         };
         const { data: ins, error } = await sb.from('ocorrencias').insert(novo).select('id').single();
         if(error) throw error;
@@ -1935,7 +1943,8 @@ $('#btnAplicarSync').onclick = async ()=>{
         }
         saida.push({ acao:'importada', protocolo,
           detalhe: (t ? t.nome : (tipo||'tipo não reconhecido'))
-            + (p ? '' : ' · perito não reconhecido')
+            + (doCartorio ? ' · SEM PERITO (nome é do cartório)'
+                          : (p ? '' : ' · perito não reconhecido'))
             + (daUnidade.municipio_nome ? ' · ' + daUnidade.municipio_nome : '') });
         importadas++;
       }
