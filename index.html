@@ -884,7 +884,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.26</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.27</p>
     </div>
   </main>
 
@@ -2150,13 +2150,27 @@ async function carregarCartorio(){
   recado('#recadoCartorio','');
   const alvo = $('#listaCartorio');
   if(cart.dados) return desenhaCartorio();
+  if(cart.carregando) return;                 /* dois toques na aba não puxam a base duas vezes */
   if(!navigator.onLine){
     alvo.innerHTML = '<div class="vazio">O cartório precisa de conexão.</div>';
     $('#cartorioNumeros').innerHTML = '';
     return;
   }
 
+  cart.carregando = true;
   alvo.innerHTML = '<div class="carregando">Carregando a base do núcleo…</div>';
+  try{
+    await leBaseCartorio();
+  }catch(e){
+    /* sem isto a tela fica em "Carregando…" para sempre e ninguém sabe por quê */
+    recado('#recadoCartorio','Não deu para montar o cartório: ' + (e && e.message ? e.message : e));
+    alvo.innerHTML = '<div class="vazio">Leitura interrompida. Toque na aba de novo para tentar outra vez.</div>';
+  }finally{
+    cart.carregando = false;
+  }
+}
+
+async function leBaseCartorio(){
   const passo = 1000;
 
   /* aqui vai tudo, inclusive tipo e município desativados: a base tem histórico */
@@ -2165,6 +2179,8 @@ async function carregarCartorio(){
     sb.from('municipios').select('id,nome,uf').order('nome'),
     sb.from('peritos').select('id,nome').order('nome')
   ]);
+  const ruim = [tp, mn, pr].find(r=>r.error);
+  if(ruim) throw ruim.error;                   /* sem as tabelas de apoio a lista fica sem nome */
   cart.tipos = tp.data || [];
   cart.municipios = mn.data || [];
   cart.peritos = pr.data || [];
@@ -2179,11 +2195,7 @@ async function carregarCartorio(){
             + 'perito_id,municipio_id,municipio_estimado,tipo_exame_id,tipo_exame_bruto,origem,status,revisar')
       .is('excluido_em', null).eq('teste', false)
       .order('id').range(de, de + passo - 1);
-    if(error){
-      recado('#recadoCartorio','Não deu para ler as ocorrências: '+error.message);
-      alvo.innerHTML = '<div class="vazio">Leitura interrompida.</div>';
-      return;
-    }
+    if(error) throw error;
     linhas.push(...data);
     if(data.length < passo || de > 40000) break;
   }
@@ -2194,7 +2206,7 @@ async function carregarCartorio(){
     const { data, error } = await sb.from('laudos')
       .select('ocorrencia_id,numero,sgd,entregue,entregue_em')
       .order('ocorrencia_id').range(de, de + passo - 1);
-    if(error) break;
+    if(error) throw error;
     data.forEach(l=>{
       const atual = porOcorrencia[l.ocorrencia_id];
       /* se houver mais de um, o entregue manda */
