@@ -579,7 +579,7 @@ nav button.ativo{color:var(--destaque)}
     <!-- ---- mapa do crime ---- -->
     <div id="telaMapa" class="oculto">
       <h2>Mapa do crime</h2>
-      <p class="sub">Bico do Papagaio · locais periciados e estatísticas do núcleo</p>
+      <p class="sub">Bico do Papagaio · ocorrências externas, com deslocamento do perito</p>
       <div class="recado" id="recadoMapa"></div>
 
       <div class="cartao">
@@ -607,7 +607,7 @@ nav button.ativo{color:var(--destaque)}
       </div>
 
       <div class="cartao">
-        <h3 class="tit-tabela">Por tipo de perícia</h3>
+        <h3 class="tit-tabela">Por tipo de ocorrência</h3>
         <div id="tabTipos" class="barras"></div>
       </div>
 
@@ -741,7 +741,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.16</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.17</p>
     </div>
   </main>
 
@@ -1700,8 +1700,10 @@ $('#btnAplicarSync').onclick = async ()=>{
 };
 
 /* ================= MAPA DO CRIME =================
-   Só entram as perícias de local. Exame de laboratório é da Seção
-   Especializada e não é trabalho de campo deste núcleo. */
+   Só entram ocorrências com deslocamento, isto é, as do módulo externo:
+   os tipos que o Galileu oferece em Registro Ocorrência -> Perícia Externa,
+   que são justamente os tipos ativos. Exame que chega por requisição, sem
+   o perito ir ao local, não tem lugar no mapa. */
 
 const mapa = { ano:'todos', tipo:'', dados:null, municipios:[], peritos:[] };
 
@@ -1732,9 +1734,9 @@ async function carregarMapa(){
     const { data: per } = await sb.from('peritos').select('id,nome').order('nome');
     mapa.peritos = per || [];
     const { data: tip } = await sb.from('tipos_exame')
-      .select('id,nome').eq('grupo','local').order('nome');
+      .select('id,nome').eq('ativo', true).order('nome');
     mapa.tipos = tip || [];
-    const tiposLocal = new Set(mapa.tipos.map(t=>t.id));
+    const tiposExternos = new Set(mapa.tipos.map(t=>t.id));
 
     /* a base passa de 6 mil linhas: puxo em páginas, só as colunas que o mapa usa */
     const linhas = [];
@@ -1758,7 +1760,7 @@ async function carregarMapa(){
       (data||[]).forEach(l=>comLaudo.add(l.ocorrencia_id));
     }
 
-    mapa.dados = linhas.map(l=>({ ...l, deLocal: tiposLocal.has(l.tipo_exame_id), laudoOk: comLaudo.has(l.id) }));
+    mapa.dados = linhas.map(l=>({ ...l, externa: tiposExternos.has(l.tipo_exame_id), laudoOk: comLaudo.has(l.id) }));
     montaFiltrosMapa();
   }
 
@@ -1771,7 +1773,7 @@ function montaFiltrosMapa(){
     + anos.map(a=>`<option value="${a}">${a}</option>`).join('');
   $('#m_periodo').value = mapa.ano;
 
-  $('#m_tipo').innerHTML = '<option value="">Todos os tipos de local</option>'
+  $('#m_tipo').innerHTML = '<option value="">Todos os tipos de ocorrência externa</option>'
     + mapa.tipos.map(t=>`<option value="${t.id}">${escapar(t.nome)}</option>`).join('');
   $('#m_tipo').value = mapa.tipo;
   montaCombo('m_tipo','Digite parte do exame — ex.: acid, furto');
@@ -1780,7 +1782,7 @@ function montaFiltrosMapa(){
 
 function filtradas(){
   return mapa.dados.filter(d=>
-    d.deLocal &&
+    d.externa &&
     (mapa.ano === 'todos' || d.ano === Number(mapa.ano)) &&
     (!mapa.tipo || d.tipo_exame_id === Number(mapa.tipo))
   );
@@ -1806,7 +1808,7 @@ function desenhaMapa(){
   /* ----- números ----- */
   const rotuloAno = mapa.ano === 'todos' ? 'no período' : 'em ' + mapa.ano;
   $('#mapaNumeros').innerHTML = [
-    [linhas.length, 'Perícias de local ' + rotuloAno],
+    [linhas.length, 'Ocorrências externas ' + rotuloAno],
     [laudosOk, 'Laudos entregues'],
     [linhas.length - laudosOk, 'Laudos pendentes'],
     [Object.keys(porMun).length, 'Municípios atendidos']
@@ -1830,7 +1832,7 @@ function desenhaMapa(){
     const atendido = chaveMun(m.n) in porNome || municipioAtendido(m.n);
     const cor = atendido ? escalaCor(n, maior) : '#141e2b';
     return `<path class="mun${atendido?'':' fora'}" d="${m.d}" fill="${cor}"
-      ><title>${escapar(m.n)}${atendido ? ' · ' + n + (n===1?' perícia':' perícias') : ' · outro núcleo'}</title></path>`;
+      ><title>${escapar(m.n)}${atendido ? ' · ' + n + (n===1?' ocorrência':' ocorrências') : ' · outro núcleo'}</title></path>`;
   }).join('');
 
   const rotulos = MAPA_BICO.mun.map(m=>{
@@ -1843,19 +1845,20 @@ function desenhaMapa(){
   }).join('');
 
   $('#mapaDesenho').innerHTML =
-    `<svg viewBox="${MAPA_BICO.vb}" role="img" aria-label="Mapa do Bico do Papagaio com as perícias por município">
+    `<svg viewBox="${MAPA_BICO.vb}" role="img" aria-label="Mapa do Bico do Papagaio com as ocorrências externas por município">
        ${formas}${pinos}${rotulos}</svg>`;
 
   $('#mapaLegenda').innerHTML =
-    `<span><i style="background:${escalaCor(maior,maior)}"></i>mais perícias</span>` +
+    `<span><i style="background:${escalaCor(maior,maior)}"></i>mais ocorrências</span>` +
     `<span><i style="background:${escalaCor(1,maior)}"></i>menos</span>` +
     `<span><i style="background:#141e2b;border:1px solid #2c4263"></i>outro núcleo</span>` +
     (comPino.length ? `<span><i style="background:var(--destaque);border-radius:50%"></i>ponto de GPS (${comPino.length})</span>` : '');
 
   $('#mapaNota').innerHTML =
-    'A cor mostra quantas perícias de local houve em cada município. Exame de laboratório não entra: é da Seção Especializada.<br>'
+    'A cor mostra quantas ocorrências externas houve em cada município — só as com deslocamento, do módulo de perícia externa. '
+    + 'Exame que chega por requisição, sem ida ao local, não entra.<br>'
     + 'Alfinete só onde existe coordenada registrada no campo — nada é espalhado por dentro do município, para não inventar lugar.'
-    + (semMunicipio ? `<br><b style="color:var(--alerta)">${semMunicipio} ${semMunicipio===1?'perícia ficou de fora':'perícias ficaram de fora'} por não ter município.</b>` : '');
+    + (semMunicipio ? `<br><b style="color:var(--alerta)">${semMunicipio} ${semMunicipio===1?'ocorrência ficou de fora':'ocorrências ficaram de fora'} por não ter município.</b>` : '');
 
   /* ----- por perito ----- */
   const peritos = Object.keys(porPerito).map(id=>{
@@ -1865,7 +1868,7 @@ function desenhaMapa(){
   }).sort((a,b)=>b.total-a.total);
 
   $('#tabPeritos').innerHTML =
-    '<thead><tr><th>Perito</th><th class="num">Perícias</th><th class="num">Entregues</th>'
+    '<thead><tr><th>Perito</th><th class="num">Externas</th><th class="num">Entregues</th>'
     + '<th class="num">Pendentes</th><th class="num">%</th></tr></thead><tbody>'
     + peritos.map(p=>`<tr><td>${escapar(p.nome)}</td><td class="num">${p.total}</td>`
       + `<td class="num">${p.ok}</td><td class="num">${p.pend}</td><td class="num">${p.pct}%</td></tr>`).join('')
