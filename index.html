@@ -766,6 +766,10 @@ nav button.ativo{color:var(--destaque)}
       <div id="escApoio" class="oculto">
         <div class="cartao">
           <label class="campo">
+            <span>Perito</span>
+            <select id="ap_perito"></select>
+          </label>
+          <label class="campo">
             <span>Dia</span>
             <input type="date" id="ap_dia">
           </label>
@@ -888,6 +892,24 @@ nav button.ativo{color:var(--destaque)}
         <div id="recadoSinc" class="recado"></div>
       </div>
 
+      <div class="cartao">
+        <h3 style="margin:0 0 4px;font-size:15px;font-weight:600">Trocar senha</h3>
+        <div style="font-size:12.5px;color:var(--suave);line-height:1.5;margin-bottom:10px">
+          Vale a partir do próximo acesso. Se esquecer, só a chefia consegue repor —
+          o sistema ainda não manda e-mail de recuperação.
+        </div>
+        <label class="campo">
+          <span>Senha nova</span>
+          <input type="password" id="s_nova" autocomplete="new-password" placeholder="pelo menos 8 caracteres">
+        </label>
+        <label class="campo">
+          <span>Repita a senha nova</span>
+          <input type="password" id="s_conf" autocomplete="new-password">
+        </label>
+        <button class="botao" id="btnTrocarSenha">Trocar senha</button>
+        <div id="recadoSenha" class="recado"></div>
+      </div>
+
       <div class="cartao" id="cartaoLimpeza" style="margin-top:14px">
         <div style="font-size:14px;color:var(--suave);line-height:1.6">
           Registros de teste seus no banco: <b style="color:var(--texto)" id="c_testes">—</b>
@@ -899,7 +921,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.38</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.39</p>
     </div>
   </main>
 
@@ -3031,13 +3053,36 @@ $('#mesSeguinte').onclick = ()=>{
   esc.diaAberto = null; carregarEscala();
 };
 
+/* ---------- trocar a própria senha ----------
+   Não depende de SMTP porque a pessoa já está logada: o Supabase aceita a troca
+   com o token da sessão. É o único caminho de troca que existe hoje — sem servidor
+   de e-mail não há recuperação, então senha esquecida só a chefia repõe pelo painel. */
+$('#btnTrocarSenha').onclick = async ()=>{
+  const nova = $('#s_nova').value, conf = $('#s_conf').value;
+  const b = $('#btnTrocarSenha');
+  recado('#recadoSenha','');
+
+  if(nova.length < 8) return recado('#recadoSenha','A senha precisa de pelo menos 8 caracteres.');
+  if(nova !== conf)   return recado('#recadoSenha','As duas senhas não são iguais.');
+  if(/^\d+$/.test(nova))
+    return recado('#recadoSenha','Só números é fraco demais para um sistema com dado de perícia. Misture letras.');
+
+  b.disabled = true; b.textContent = 'Trocando…';
+  const { error } = await sb.auth.updateUser({ password: nova });
+  b.disabled = false; b.textContent = 'Trocar senha';
+
+  if(error) return recado('#recadoSenha','Não deu para trocar: ' + error.message);
+  $('#s_nova').value = ''; $('#s_conf').value = '';
+  recado('#recadoSenha','Senha trocada. Use a nova no próximo acesso.','ok');
+};
+
 /* ---------- escala vista pelo apoio administrativo ----------
    Ele não entra na escala: não vê a grade do mês, não vê a oficial (que carrega as
    férias e o que se declara) e não vê afastamento de ninguém. Vê uma pergunta só —
    quem está de plantão no dia tal — respondida pela interna, que é quem de fato
    cobre. O RLS garante o resto: para o perfil apoio o banco só devolve escala
    interna e os plantões dela. */
-const apo = { dia:null };
+const apo = { dia:null, perito:'', peritos:[] };
 
 function modoEscalaApoio(){
   $('#escApoio').classList.remove('oculto');
@@ -3059,6 +3104,16 @@ async function carregarEscalaApoio(){
   recado('#recadoEscala','');
   if(!apo.dia) apo.dia = diaISO(new Date());
   $('#ap_dia').value = apo.dia;
+  if(!apo.peritos.length){
+    const { data, error } = await sb.from('peritos').select('id,nome')
+      .eq('vinculo','fixo').eq('ativo', true).order('nome');
+    if(error){ recado('#recadoEscala','Não deu para carregar os peritos: '+error.message); return; }
+    apo.peritos = data || [];
+    $('#ap_perito').innerHTML = '<option value="">Escolha o perito</option>'
+      + apo.peritos.map(p=>`<option value="${p.id}">${escapar(p.nome)}</option>`).join('');
+    montaCombo('ap_perito','Digite parte do nome');
+    defineCombo('ap_perito', apo.perito);
+  }
   await mostraPlantao();
 }
 
@@ -3082,6 +3137,10 @@ async function mostraPlantao(){
 async function buscaPlantao(){
   const alvo = $('#ap_resposta');
   if(!apo.dia) return;
+  if(!apo.perito){
+    alvo.innerHTML = '<div class="vazio">Escolha o perito e o dia.</div>';
+    return;
+  }
   if(!navigator.onLine){
     alvo.innerHTML = '<div class="vazio">A consulta precisa de conexão.</div>';
     return;
@@ -3103,7 +3162,8 @@ async function buscaPlantao(){
   }
 
   const { data: plantoes, error: e2 } = await sb.from('escala_plantoes')
-    .select('turno,peritos(nome)').eq('escala_id', escala.id).eq('dia', apo.dia);
+    .select('turno').eq('escala_id', escala.id).eq('dia', apo.dia)
+    .eq('perito_id', Number(apo.perito));
   if(e2){
     recado('#recadoEscala', 'Não deu para ler o plantão: ' + e2.message);
     alvo.innerHTML = '';
@@ -3111,24 +3171,26 @@ async function buscaPlantao(){
   }
 
   const lista = plantoes || [];
+  const quem = (apo.peritos.find(p=>p.id === Number(apo.perito))||{}).nome || 'o perito';
+  const quando = porExtenso(ano, mes, diaN);
+
   if(!lista.length){
-    alvo.innerHTML = '<div class="item pendente"><h3>Dia sem cobertura lançada</h3>' +
-      '<div class="meta"><span>' + escapar(porExtenso(ano, mes, diaN)) + '</span></div></div>';
+    alvo.innerHTML = '<div class="item"><h3>' + escapar(quem) + ' não está de plantão</h3>'
+      + '<div class="meta"><span>' + escapar(quando) + '</span></div></div>';
     return;
   }
 
-  /* o diurno antes do noturno, e o de 24h na frente dos dois */
+  /* o de 24h na frente, depois o diurno e o noturno */
   const ordem = { '24h':0, '12h':1, '12h_noturno':2 };
   lista.sort((x,y)=> (ordem[x.turno] ?? 9) - (ordem[y.turno] ?? 9));
 
-  alvo.innerHTML = '<div class="cartao" style="margin-bottom:10px;font-size:13px;color:var(--suave)">'
-    + escapar(porExtenso(ano, mes, diaN)) + '</div>'
-    + lista.map(p=>{
-        const t = TURNOS[p.turno] || { curto:p.turno, faixa:'' };
-        return '<div class="item concluida"><h3>' + escapar(p.peritos ? p.peritos.nome : '—') + '</h3>'
-          + '<div class="meta"><span>' + escapar(t.curto) + '</span>'
-          + (t.faixa ? '<span>' + escapar(t.faixa) + '</span>' : '') + '</div></div>';
-      }).join('');
+  alvo.innerHTML = lista.map(p=>{
+    const t = TURNOS[p.turno] || { curto:p.turno, faixa:'' };
+    return '<div class="item concluida"><h3>' + escapar(quem) + ' está de plantão</h3>'
+      + '<div class="meta"><span>' + escapar(quando) + '</span>'
+      + '<span>' + escapar(t.curto) + '</span>'
+      + (t.faixa ? '<span>' + escapar(t.faixa) + '</span>' : '') + '</div></div>';
+  }).join('');
 }
 
 function porExtenso(ano, mes, diaN){
@@ -3141,6 +3203,10 @@ function porExtenso(ano, mes, diaN){
 $('#ap_dia').addEventListener('change', e=>{
   if(!e.target.value) return;
   apo.dia = e.target.value;
+  mostraPlantao();
+});
+$('#ap_perito').addEventListener('change', e=>{
+  apo.perito = e.target.value;
   mostraPlantao();
 });
 $('#ap_antes').onclick  = ()=> mexeDia(-1);
