@@ -832,7 +832,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.22</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.23</p>
     </div>
   </main>
 
@@ -1876,6 +1876,9 @@ const ASSUNTOS = [
 
 const of = { ano:new Date().getFullYear(), lista:[], peritos:[] };
 
+/* o rotuloOrgao do formulário é local àquela função; aqui precisa do próprio */
+const nomeDeOrgao = o => (o.sigla ? o.sigla + ' — ' : '') + o.nome;
+
 function numeroOficio(n, ano){ return String(n).padStart(3,'0') + '/' + ano; }
 
 async function carregarOficios(){
@@ -1892,7 +1895,7 @@ async function carregarOficios(){
     $('#of_responsavel').innerHTML = '<option value="">Todos</option>'
       + of.peritos.map(p=>`<option value="${p.id}">${escapar(p.nome)}</option>`).join('');
     $('#of_destinatario').innerHTML = '<option value="">Sem destinatário definido</option>'
-      + (referencias.orgaos||[]).map(o=>`<option value="${o.id}">${escapar(rotuloOrgao(o))}</option>`).join('');
+      + (referencias.orgaos||[]).map(o=>`<option value="${o.id}">${escapar(nomeDeOrgao(o))}</option>`).join('');
     montaCombo('of_destinatario','Digite a delegacia ou órgão');
     const agora = new Date().getFullYear();
     const anos = []; for(let a=agora; a>=2021; a--) anos.push(a);
@@ -1919,7 +1922,7 @@ function desenhaOficios(){
   const sit = $('#of_situacao').value;
   const resp = $('#of_responsavel').value;
   const nomePer = {}; of.peritos.forEach(p=>{ nomePer[p.id] = p.nome; });
-  const nomeOrg = {}; (referencias.orgaos||[]).forEach(o=>{ nomeOrg[o.id] = rotuloOrgao(o); });
+  const nomeOrg = {}; (referencias.orgaos||[]).forEach(o=>{ nomeOrg[o.id] = nomeDeOrgao(o); });
 
   const filtrados = of.lista.filter(o=>{
     if(sit === 'enviado' && !o.enviado) return false;
