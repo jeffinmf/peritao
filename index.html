@@ -745,7 +745,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.20</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.21</p>
     </div>
   </main>
 
@@ -1771,9 +1771,14 @@ $('#btnAplicarSync').onclick = async ()=>{
    Só entram ocorrências com deslocamento, isto é, as do módulo externo:
    os tipos que o Galileu oferece em Registro Ocorrência -> Perícia Externa,
    que são justamente os tipos ativos. Exame que chega por requisição, sem
-   o perito ir ao local, não tem lugar no mapa. */
+   o perito ir ao local, não tem lugar no mapa.
 
-const mapa = { ano:'todos', tipo:'', estimados:true, dados:null, municipios:[], peritos:[] };
+   E só o quadro atual: peritos de vínculo 'fixo' e municípios ativos. Quem
+   saiu da perícia e município de outro núcleo ficam de fora — a ocorrência
+   continua na base e na estatística de produção, só não entra neste mapa. */
+
+const mapa = { ano:'todos', tipo:'', estimados:true, dados:null,
+               municipios:[], peritos:[], doQuadro:new Set(), doNucleo:new Set() };
 
 function escalaCor(n, maior){
   if(!n) return '#16263d';
@@ -1797,9 +1802,11 @@ async function carregarMapa(){
   if(!mapa.dados){
     $('#mapaDesenho').innerHTML = '<div class="carregando">Carregando…</div>';
 
-    const { data: mun } = await sb.from('municipios').select('id,nome,uf,atendido,ativo');
+    const { data: mun } = await sb.from('municipios')
+      .select('id,nome,uf,atendido,ativo').eq('ativo', true);
     mapa.municipios = mun || [];
-    const { data: per } = await sb.from('peritos').select('id,nome').order('nome');
+    const { data: per } = await sb.from('peritos')
+      .select('id,nome').eq('vinculo','fixo').order('nome');
     mapa.peritos = per || [];
     const { data: tip } = await sb.from('tipos_exame')
       .select('id,nome').eq('ativo', true).order('nome');
@@ -1832,6 +1839,8 @@ async function carregarMapa(){
     montaFiltrosMapa();
   }
 
+  mapa.doQuadro = new Set(mapa.peritos.map(p=>p.id));
+  mapa.doNucleo = new Set(mapa.municipios.map(m=>m.id));
   desenhaMapa();
 }
 
@@ -1853,7 +1862,9 @@ function filtradas(){
     d.externa &&
     (mapa.ano === 'todos' || d.ano === Number(mapa.ano)) &&
     (!mapa.tipo || d.tipo_exame_id === Number(mapa.tipo)) &&
-    (mapa.estimados || !d.municipio_estimado)
+    (mapa.estimados || !d.municipio_estimado) &&
+    mapa.doQuadro.has(d.perito_id) &&
+    mapa.doNucleo.has(d.municipio_id)
   );
 }
 
@@ -1929,6 +1940,7 @@ function desenhaMapa(){
     + 'Exame que chega por requisição, sem ida ao local, não entra.<br>'
     + 'Alfinete só onde existe coordenada registrada no campo — nada é espalhado por dentro do município, para não inventar lugar.'
     + (estimados ? `<br>${estimados} ${estimados===1?'tem município estimado':'têm município estimado'} pelo órgão requisitante — a delegacia que pediu nem sempre fica onde foi o fato.` : '')
+    + `<br>Conta só o quadro atual — ${mapa.peritos.map(p=>escapar(p.nome)).join(', ')} — e os ${mapa.municipios.length} municípios da área do núcleo.`
     + (semMunicipio ? `<br><b style="color:var(--alerta)">${semMunicipio} ${semMunicipio===1?'ocorrência ficou de fora':'ocorrências ficaram de fora'} por não ter município.</b>` : '');
 
   /* ----- por perito ----- */
