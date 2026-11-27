@@ -921,7 +921,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.39</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.40</p>
     </div>
   </main>
 
@@ -3082,7 +3082,7 @@ $('#btnTrocarSenha').onclick = async ()=>{
    quem está de plantão no dia tal — respondida pela interna, que é quem de fato
    cobre. O RLS garante o resto: para o perfil apoio o banco só devolve escala
    interna e os plantões dela. */
-const apo = { dia:null, perito:'', peritos:[] };
+const apo = { dia:null, perito:'', peritos:[], seq:0 };
 
 function modoEscalaApoio(){
   $('#escApoio').classList.remove('oculto');
@@ -3126,7 +3126,7 @@ function mexeDia(passos){
 }
 
 async function mostraPlantao(){
-  try{ await buscaPlantao(); }
+  try{ await buscaPlantao(++apo.seq); }
   catch(e){
     /* sem isto a tela fica em "Carregando…" e o erro só aparece no console */
     recado('#recadoEscala', 'Não deu para consultar: ' + (e && e.message ? e.message : e));
@@ -3134,10 +3134,15 @@ async function mostraPlantao(){
   }
 }
 
-async function buscaPlantao(){
+async function buscaPlantao(seq){
   const alvo = $('#ap_resposta');
-  if(!apo.dia) return;
-  if(!apo.perito){
+  /* Congela os filtros aqui. Depois de um await, apo.dia e apo.perito já podem ter
+     mudado — foi assim que a tela respondeu o turno de um dia com a data de outro.
+     E seq descarta resposta de consulta velha que chegou atrasada. */
+  const dia = apo.dia, perito = apo.perito;
+  const atual = ()=> seq === apo.seq;
+  if(!dia) return;
+  if(!perito){
     alvo.innerHTML = '<div class="vazio">Escolha o perito e o dia.</div>';
     return;
   }
@@ -3145,11 +3150,12 @@ async function buscaPlantao(){
     alvo.innerHTML = '<div class="vazio">A consulta precisa de conexão.</div>';
     return;
   }
-  const [ano, mes, diaN] = apo.dia.split('-').map(Number);
+  const [ano, mes, diaN] = dia.split('-').map(Number);
   alvo.innerHTML = '<div class="carregando">Carregando…</div>';
 
   const { data: escala, error } = await sb.from('escalas')
     .select('id,publicada_em').eq('ano', ano).eq('mes', mes).eq('tipo', 'interna').maybeSingle();
+  if(!atual()) return;
   if(error){
     recado('#recadoEscala', 'Não deu para ler a escala: ' + error.message);
     alvo.innerHTML = '';
@@ -3162,8 +3168,9 @@ async function buscaPlantao(){
   }
 
   const { data: plantoes, error: e2 } = await sb.from('escala_plantoes')
-    .select('turno').eq('escala_id', escala.id).eq('dia', apo.dia)
-    .eq('perito_id', Number(apo.perito));
+    .select('turno').eq('escala_id', escala.id).eq('dia', dia)
+    .eq('perito_id', Number(perito));
+  if(!atual()) return;
   if(e2){
     recado('#recadoEscala', 'Não deu para ler o plantão: ' + e2.message);
     alvo.innerHTML = '';
@@ -3171,7 +3178,7 @@ async function buscaPlantao(){
   }
 
   const lista = plantoes || [];
-  const quem = (apo.peritos.find(p=>p.id === Number(apo.perito))||{}).nome || 'o perito';
+  const quem = (apo.peritos.find(p=>p.id === Number(perito))||{}).nome || 'o perito';
   const quando = porExtenso(ano, mes, diaN);
 
   if(!lista.length){
