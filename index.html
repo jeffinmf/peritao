@@ -162,6 +162,10 @@ nav button.ativo{color:var(--destaque)}
 .item.recebida,.item.em_pericia{border-left-color:var(--destaque)}
 .item.a_receber{border-left-color:var(--suave)}
 .item.pendente{border-left-color:var(--alerta);border-style:dashed}
+.item.sem-laudo{border-left-color:var(--alerta)}
+.selo-rever{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;
+  font-size:10.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;
+  background:rgba(232,184,75,.16);color:#f6e2b0;border:1px solid var(--alerta);vertical-align:middle}
 .item h3{margin:0 0 4px;font-size:15px;font-weight:600;line-height:1.3}
 .item .meta{font-size:12.5px;color:var(--suave);display:flex;flex-wrap:wrap;gap:4px 10px}
 .vazio{text-align:center;color:var(--suave);padding:44px 18px;font-size:14px}
@@ -553,6 +557,53 @@ nav button.ativo{color:var(--destaque)}
       <div id="listaBusca"><div class="vazio">Digite algo para buscar.</div></div>
     </div>
 
+    <!-- ---- cartório ---- -->
+    <div id="telaCartorio" class="oculto">
+      <h2>Cartório</h2>
+      <p class="sub">Todas as ocorrências do núcleo · somente leitura</p>
+      <div class="recado" id="recadoCartorio"></div>
+
+      <div class="cartao">
+        <label class="campo">
+          <span>Protocolo, BO, vítima ou local</span>
+          <input id="c_termo" placeholder="Digite para filtrar">
+        </label>
+        <div class="linha">
+          <label class="campo">
+            <span>Ano</span>
+            <select id="c_ano"></select>
+          </label>
+          <label class="campo">
+            <span>Laudo</span>
+            <select id="c_laudo">
+              <option value="">Qualquer situação</option>
+              <option value="ok">Entregue</option>
+              <option value="pend">Pendente</option>
+            </select>
+          </label>
+        </div>
+        <label class="campo">
+          <span>Perito</span>
+          <select id="c_perito"></select>
+        </label>
+        <label class="campo">
+          <span>Município</span>
+          <select id="c_municipio"></select>
+        </label>
+        <label class="campo">
+          <span>Tipo de exame</span>
+          <select id="c_tipo"></select>
+        </label>
+        <button type="button" class="botao secundario" id="c_limpar" style="margin-top:4px">Limpar filtros</button>
+      </div>
+
+      <div class="numeros" id="cartorioNumeros"></div>
+
+      <div id="listaCartorio"><div class="carregando">Carregando…</div></div>
+      <button type="button" class="botao secundario oculto" id="c_mais" style="margin-top:12px">Ver mais</button>
+      <p class="mapa-nota" id="cartorioNota"></p>
+    </div>
+
     <!-- ---- galileu ---- -->
     <div id="telaGalileu" class="oculto">
       <h2>Galileu</h2>
@@ -832,7 +883,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.24</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.25</p>
     </div>
   </main>
 
@@ -844,6 +895,10 @@ nav button.ativo{color:var(--destaque)}
     <button data-tela="Minhas">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
       Minhas
+    </button>
+    <button data-tela="Cartorio">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg>
+      Cartório
     </button>
     <button data-tela="Buscar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -890,7 +945,7 @@ let eu = null, referencias = { tipos:[], municipios:[], orgaos:[] };
    Enviar assina a ocorrência em nome dele. O RLS já barra escala e afastamento —
    isto aqui é para a tela não oferecer o que o banco vai recusar. */
 const ABAS_POR_PERFIL = {
-  apoio: ['Buscar','Mapa','Oficios','Galileu','Conta']
+  apoio: ['Cartorio','Buscar','Mapa','Oficios','Galileu','Conta']
 };
 
 function ajustaAbasAoPerfil(){
@@ -1444,7 +1499,7 @@ document.querySelectorAll('nav button').forEach(b=>{
   b.onclick = ()=>{
     document.querySelectorAll('nav button').forEach(x=>x.classList.remove('ativo'));
     b.classList.add('ativo');
-    ['Nova','Minhas','Buscar','Mapa','Escala','Oficios','Galileu','Conta'].forEach(t=>
+    ['Nova','Minhas','Cartorio','Buscar','Mapa','Escala','Oficios','Galileu','Conta'].forEach(t=>
       $('#tela'+t).classList.toggle('oculto', t!==b.dataset.tela));
     $('.rodape').classList.toggle('oculto', b.dataset.tela!=='Nova');
     if(b.dataset.tela==='Minhas') carregarMinhas();
@@ -1453,6 +1508,7 @@ document.querySelectorAll('nav button').forEach(b=>{
     if(b.dataset.tela==='Escala') carregaConfig().then(carregarEscala);
     if(b.dataset.tela==='Mapa') carregarMapa();
     if(b.dataset.tela==='Oficios') carregarOficios();
+    if(b.dataset.tela==='Cartorio') carregarCartorio();
     window.scrollTo(0,0);
   };
 });
@@ -2077,6 +2133,207 @@ function escalaCor(n, maior){
   const c = a.map((v,i)=>Math.round(v + (b[i]-v)*t));
   return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
+
+/* ---------- cartório ----------
+   É o lugar da planilha antiga: tudo o que o núcleo tem, não só as do perito que
+   está logado. A base vem do Galileu e da planilha, então a tela é só de leitura
+   — corrigir por aqui seria escrever numa cópia que o próximo Trazer sobrescreve.
+   Carrego a base inteira uma vez e filtro na memória: são milhares de linhas, mas
+   poucas colunas, e assim os filtros respondem na hora e as contas saem certas. */
+const CART_PAGINA = 60;
+const cart = { dados:null, tipos:[], municipios:[], peritos:[], mapaTipo:{}, mapaMun:{}, mapaPer:{},
+               ano:'todos', perito:'', municipio:'', tipo:'', laudo:'', termo:'',
+               mostrando:CART_PAGINA };
+
+async function carregarCartorio(){
+  recado('#recadoCartorio','');
+  const alvo = $('#listaCartorio');
+  if(cart.dados) return desenhaCartorio();
+  if(!navigator.onLine){
+    alvo.innerHTML = '<div class="vazio">O cartório precisa de conexão.</div>';
+    $('#cartorioNumeros').innerHTML = '';
+    return;
+  }
+
+  alvo.innerHTML = '<div class="carregando">Carregando a base do núcleo…</div>';
+  const passo = 1000;
+
+  /* aqui vai tudo, inclusive tipo e município desativados: a base tem histórico */
+  const [tp, mn, pr] = await Promise.all([
+    sb.from('tipos_exame').select('id,nome').order('nome'),
+    sb.from('municipios').select('id,nome,uf').order('nome'),
+    sb.from('peritos').select('id,nome').order('nome')
+  ]);
+  cart.tipos = tp.data || [];
+  cart.municipios = mn.data || [];
+  cart.peritos = pr.data || [];
+  cart.mapaTipo = {}; cart.tipos.forEach(t=>{ cart.mapaTipo[t.id] = t.nome; });
+  cart.mapaMun  = {}; cart.municipios.forEach(m=>{ cart.mapaMun[m.id] = m.nome; });
+  cart.mapaPer  = {}; cart.peritos.forEach(p=>{ cart.mapaPer[p.id] = p.nome; });
+
+  const linhas = [];
+  for(let de = 0; ; de += passo){
+    const { data, error } = await sb.from('ocorrencias')
+      .select('id,ano,protocolo,caso,bo,nome_vitima,local_bruto,ordem_em,data_fato,acionamento_em,'
+            + 'perito_id,municipio_id,municipio_estimado,tipo_exame_id,tipo_exame_bruto,origem,status,revisar')
+      .is('excluido_em', null).eq('teste', false)
+      .order('id').range(de, de + passo - 1);
+    if(error){
+      recado('#recadoCartorio','Não deu para ler as ocorrências: '+error.message);
+      alvo.innerHTML = '<div class="vazio">Leitura interrompida.</div>';
+      return;
+    }
+    linhas.push(...data);
+    if(data.length < passo || de > 40000) break;
+  }
+
+  /* laudos à parte: trazer por embed multiplicaria o peso de cada linha */
+  const porOcorrencia = {};
+  for(let de = 0; ; de += passo){
+    const { data, error } = await sb.from('laudos')
+      .select('ocorrencia_id,numero,sgd,entregue,entregue_em')
+      .order('ocorrencia_id').range(de, de + passo - 1);
+    if(error) break;
+    data.forEach(l=>{
+      const atual = porOcorrencia[l.ocorrencia_id];
+      /* se houver mais de um, o entregue manda */
+      if(!atual || (l.entregue && !atual.entregue)) porOcorrencia[l.ocorrencia_id] = l;
+    });
+    if(data.length < passo || de > 40000) break;
+  }
+
+  cart.dados = linhas.map(l=>({ ...l, laudo: porOcorrencia[l.id] || null }));
+  montaFiltrosCartorio();
+  desenhaCartorio();
+}
+
+function montaFiltrosCartorio(){
+  const anos = [...new Set(cart.dados.map(d=>d.ano).filter(Boolean))].sort((a,b)=>b-a);
+  $('#c_ano').innerHTML = '<option value="todos">Todos os anos</option>'
+    + anos.map(a=>`<option value="${a}">${a}</option>`).join('');
+  $('#c_ano').value = cart.ano;
+
+  /* só quem aparece na base: a lista de peritos tem nomes que nunca lançaram aqui */
+  const comPerito = new Set(cart.dados.map(d=>d.perito_id).filter(Boolean));
+  $('#c_perito').innerHTML = '<option value="">Todos os peritos</option>'
+    + cart.peritos.filter(p=>comPerito.has(p.id))
+        .map(p=>`<option value="${p.id}">${escapar(p.nome)}</option>`).join('');
+  $('#c_perito').value = cart.perito;
+  montaCombo('c_perito','Digite parte do nome');
+  defineCombo('c_perito', cart.perito);
+
+  const comMun = new Set(cart.dados.map(d=>d.municipio_id).filter(Boolean));
+  $('#c_municipio').innerHTML = '<option value="">Todos os municípios</option>'
+    + cart.municipios.filter(m=>comMun.has(m.id))
+        .map(m=>`<option value="${m.id}">${escapar(m.nome)}</option>`).join('');
+  $('#c_municipio').value = cart.municipio;
+  montaCombo('c_municipio','Digite o município');
+  defineCombo('c_municipio', cart.municipio);
+
+  const comTipo = new Set(cart.dados.map(d=>d.tipo_exame_id).filter(Boolean));
+  $('#c_tipo').innerHTML = '<option value="">Todos os tipos de exame</option>'
+    + cart.tipos.filter(t=>comTipo.has(t.id))
+        .map(t=>`<option value="${t.id}">${escapar(t.nome)}</option>`).join('');
+  $('#c_tipo').value = cart.tipo;
+  montaCombo('c_tipo','Digite parte do exame — ex.: acid, droga');
+  defineCombo('c_tipo', cart.tipo);
+}
+
+function filtradasCartorio(){
+  const termo = semAcento(cart.termo.trim());
+  const lista = cart.dados.filter(d=>{
+    if(cart.ano !== 'todos' && d.ano !== Number(cart.ano)) return false;
+    if(cart.perito && d.perito_id !== Number(cart.perito)) return false;
+    if(cart.municipio && d.municipio_id !== Number(cart.municipio)) return false;
+    if(cart.tipo && d.tipo_exame_id !== Number(cart.tipo)) return false;
+    const entregue = !!(d.laudo && d.laudo.entregue);
+    if(cart.laudo === 'ok' && !entregue) return false;
+    if(cart.laudo === 'pend' && entregue) return false;
+    if(termo){
+      const alvo = semAcento([d.protocolo, d.caso, d.bo, d.nome_vitima, d.local_bruto,
+                              d.laudo && d.laudo.numero, d.laudo && d.laudo.sgd].filter(Boolean).join(' '));
+      if(!alvo.includes(termo)) return false;
+    }
+    return true;
+  });
+  const quando = d => d.ordem_em || d.data_fato || d.acionamento_em || '';
+  return lista.sort((a,b)=> String(quando(b)).localeCompare(String(quando(a))));
+}
+
+function cartaoCartorio(d){
+  const tipo = cart.mapaTipo[d.tipo_exame_id] || d.tipo_exame_bruto || 'Exame';
+  const entregue = !!(d.laudo && d.laudo.entregue);
+  const partes = [];
+  if(d.protocolo) partes.push('nº ' + d.protocolo);
+  const mun = cart.mapaMun[d.municipio_id];
+  if(mun) partes.push(mun + (d.municipio_estimado ? ' (estimado)' : ''));
+  partes.push(dataBR(d.ordem_em || d.data_fato || d.acionamento_em));
+  const per = cart.mapaPer[d.perito_id];
+  if(per) partes.push(primeiroNome(per));
+  partes.push(entregue ? 'laudo ' + (d.laudo.numero || 'entregue') : 'laudo pendente');
+  const marca = d.revisar ? '<span class="selo-rever">a revisar</span>' : '';
+  return `<div class="item ${entregue?'concluida':'sem-laudo'}">
+    <h3>${escapar(tipo)}${marca}</h3>
+    <div class="meta">${partes.map(p=>`<span>${escapar(p)}</span>`).join('')}</div>
+  </div>`;
+}
+
+function primeiroNome(n){
+  const p = String(n||'').trim().split(/\s+/);
+  return p.length > 1 ? p[0] + ' ' + p[p.length-1] : p[0];
+}
+
+function desenhaCartorio(){
+  const lista = filtradasCartorio();
+  const entregues = lista.filter(d=>d.laudo && d.laudo.entregue).length;
+  const rever = lista.filter(d=>d.revisar).length;
+
+  $('#cartorioNumeros').innerHTML = [
+    [lista.length, 'Ocorrências no filtro'],
+    [entregues, 'Com laudo entregue'],
+    [lista.length - entregues, 'Laudo pendente'],
+    [rever, 'A revisar']
+  ].map(([n,r])=>`<div class="numero"><b>${n.toLocaleString('pt-BR')}</b><small>${r}</small></div>`).join('');
+
+  const alvo = $('#listaCartorio');
+  if(!lista.length){
+    alvo.innerHTML = '<div class="vazio">Nada com esses filtros.</div>';
+    $('#c_mais').classList.add('oculto');
+  } else {
+    const fatia = lista.slice(0, cart.mostrando);
+    alvo.innerHTML = fatia.map(cartaoCartorio).join('');
+    const resta = lista.length - fatia.length;
+    $('#c_mais').classList.toggle('oculto', resta <= 0);
+    $('#c_mais').textContent = resta > 0
+      ? 'Ver mais ' + Math.min(resta, CART_PAGINA).toLocaleString('pt-BR') + ' de ' + resta.toLocaleString('pt-BR')
+      : 'Ver mais';
+  }
+
+  $('#cartorioNota').textContent = 'Base de ' + cart.dados.length.toLocaleString('pt-BR')
+    + ' ocorrências do núcleo, da planilha e das atualizações do Galileu. '
+    + 'Tela só de leitura: correção de dado importado se faz no Galileu e volta no próximo Trazer.';
+}
+
+function filtroCartorio(id, campo){
+  const el = $('#'+id);
+  if(!el) return;
+  el.addEventListener(el.tagName === 'INPUT' ? 'input' : 'change', ()=>{
+    cart[campo] = el.value;
+    cart.mostrando = CART_PAGINA;
+    if(cart.dados) desenhaCartorio();
+  });
+}
+['c_ano|ano','c_laudo|laudo','c_perito|perito','c_municipio|municipio','c_tipo|tipo','c_termo|termo']
+  .forEach(par=>{ const [id, campo] = par.split('|'); filtroCartorio(id, campo); });
+
+$('#c_mais').onclick = ()=>{ cart.mostrando += CART_PAGINA; desenhaCartorio(); };
+$('#c_limpar').onclick = ()=>{
+  Object.assign(cart, { ano:'todos', perito:'', municipio:'', tipo:'', laudo:'', termo:'', mostrando:CART_PAGINA });
+  $('#c_ano').value = 'todos'; $('#c_laudo').value = '';
+  $('#c_termo').value = '';
+  defineCombo('c_perito',''); defineCombo('c_municipio',''); defineCombo('c_tipo','');
+  if(cart.dados) desenhaCartorio();
+};
 
 async function carregarMapa(){
   recado('#recadoMapa','');
