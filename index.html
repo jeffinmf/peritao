@@ -562,7 +562,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div class="cartao">
         <label class="campo">
-          <span>Protocolo, BO, vítima ou local</span>
+          <span>Protocolo, BO, vítima, local ou exame</span>
           <input id="c_termo" placeholder="Digite para filtrar">
         </label>
         <div class="linha">
@@ -884,7 +884,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.27</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.28</p>
     </div>
   </main>
 
@@ -2265,6 +2265,7 @@ function filtradasCartorio(){
     if(cart.rever && !d.revisar) return false;
     if(termo){
       const alvo = semAcento([d.protocolo, d.caso, d.bo, d.nome_vitima, d.local_bruto,
+                              cart.mapaTipo[d.tipo_exame_id] || d.tipo_exame_bruto,
                               d.laudo && d.laudo.numero, d.laudo && d.laudo.sgd].filter(Boolean).join(' '));
       if(!alvo.includes(termo)) return false;
     }
