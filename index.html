@@ -672,6 +672,8 @@ nav button.ativo{color:var(--destaque)}
       </div>
 
       <div class="numeros" id="cartorioNumeros"></div>
+      <button type="button" class="botao secundario" id="c_planilha"
+              style="margin-bottom:14px">Baixar planilha do que está filtrado</button>
 
       <div id="listaCartorio"><div class="carregando">Carregando…</div></div>
       <button type="button" class="botao secundario oculto" id="c_mais" style="margin-top:12px">Ver mais</button>
@@ -785,6 +787,8 @@ nav button.ativo{color:var(--destaque)}
         </label>
       </div>
 
+      <button type="button" class="botao secundario" id="of_planilha"
+              style="margin-bottom:14px">Baixar planilha do ano</button>
       <div id="listaOficios"></div>
     </div>
 
@@ -964,7 +968,15 @@ nav button.ativo{color:var(--destaque)}
         <div id="recadoSinc" class="recado"></div>
       </div>
 
-      <div class="cartao">
+      <div class="cartao" id="cartaoSenha">
+        <div id="avisoSenha" class="oculto"
+             style="font-size:13.5px;color:#f6e2b0;background:rgba(232,184,75,.14);
+                    border:1px solid var(--alerta);border-radius:var(--r);
+                    padding:11px 12px;margin-bottom:12px;line-height:1.5">
+          <b>Troque a senha provisória antes de usar o sistema.</b><br>
+          Ela foi definida pela chefia e é a mesma para mais de uma pessoa. Enquanto
+          não for trocada, as outras abas ficam fechadas.
+        </div>
         <h3 style="margin:0 0 4px;font-size:15px;font-weight:600">Trocar senha</h3>
         <div style="font-size:12.5px;color:var(--suave);line-height:1.5;margin-bottom:10px">
           Vale a partir do próximo acesso. Se esquecer, só a chefia consegue repor —
@@ -993,7 +1005,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.43</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.44</p>
     </div>
   </main>
 
@@ -1153,7 +1165,7 @@ async function iniciar(){
   if(!session) return;
 
   const { data:perito, error } = await sb
-    .from('peritos').select('id,nome,nome_completo,perfil,chefe')
+    .from('peritos').select('id,nome,nome_completo,perfil,chefe,senha_trocada')
     .eq('auth_id', session.user.id).maybeSingle();
 
   if(error || !perito){
@@ -1183,13 +1195,17 @@ async function iniciar(){
 
   /* por último: só depois das referências, porque troca de aba e a aba carrega dados */
   ajustaAbasAoPerfil();
+  exigeTrocaDeSenha();
 }
 
 async function carregaReferencias(){
   /* municipiosTodos inclui os desativados — o órgão de Itaguatins ainda precisa
      achar Itaguatins quando o Trazer deduz o município pelo requisitante. */
   const [t,m,o,mt] = await Promise.all([
-    sb.from('tipos_exame').select('id,nome').eq('ativo',true).order('nome'),
+    /* por uso real, não alfabética: no campo o que se lança é furto, acidente e
+       morte violenta, e eles ficavam no fim da lista */
+    sb.from('tipos_exame').select('id,nome').eq('ativo',true)
+      .order('usos',{ascending:false}).order('nome'),
     sb.from('municipios').select('id,nome').eq('ativo',true).order('nome'),
     sb.from('orgaos').select('id,sigla,nome,tipo,nome_galileu').eq('ativo',true).order('nome'),
     sb.from('municipios').select('id,nome').order('nome')
@@ -1571,6 +1587,21 @@ const ICONE_LIXEIRA = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor
   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
   <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>
   <path d="M10 11v6"/><path d="M14 11v6"/></svg>`;
+/* CSV em vez de xlsx: não precisa de biblioteca de terceiro e o Excel abre
+   direto. Ponto e vírgula e BOM porque é o que o Excel em português espera. */
+function baixaCSV(nome, cabecalho, linhas){
+  const cerca = v => {
+    const t = String(v == null ? '' : v);
+    return /[";\n]/.test(t) ? '"' + t.replace(/"/g,'""') + '"' : t;
+  };
+  const texto = '\ufeff' + [cabecalho, ...linhas].map(l=>l.map(cerca).join(';')).join('\r\n');
+  const url = URL.createObjectURL(new Blob([texto], {type:'text/csv;charset=utf-8'}));
+  const a = document.createElement('a');
+  a.href = url; a.download = nome;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+
 function escapar(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 async function carregarMinhas(){
@@ -2203,7 +2234,9 @@ function desenhaOficios(){
       ? `<div class="envio">
            <input type="text" placeholder="Nº SGD, para marcar como enviado" data-sgd="${o.id}">
            <button type="button" data-enviar="${o.id}">Enviei</button>
-         </div>` : '';
+         </div>
+         <button type="button" class="botao secundario" data-cancelar="${o.id}"
+                 style="margin-top:8px;padding:9px;font-size:13px">Cancelar a reserva</button>` : '';
 
     return `<div class="oficio">
       <div class="cab"><span class="num">${numeroOficio(o.numero,o.ano)}</span>${selo}</div>
@@ -2224,6 +2257,40 @@ $('#of_assunto').onchange = ()=>{
   $(s).addEventListener(s==='#of_busca' ? 'input' : 'change', desenhaOficios);
 });
 $('#of_ano').onchange = ()=>{ of.ano = Number($('#of_ano').value); carregarOficios(); };
+
+$('#of_planilha').onclick = ()=>{
+  if(!of.lista || !of.lista.length) return recado('#recadoOficios','Não há ofícios neste ano.');
+  const nomePer = {}; (of.peritos||[]).forEach(p=>{ nomePer[p.id] = p.nome; });
+  const nomeOrg = {}; (referencias.orgaos||[]).forEach(o=>{ nomeOrg[o.id] = nomeDeOrgao(o); });
+  baixaCSV('oficios-' + of.ano + '.csv',
+    ['Número','Assunto','Responsável','Data','Destinatário','SGD','Situação','Observação'],
+    [...of.lista].sort((a,b)=>a.numero-b.numero).map(o=>[
+      numeroOficio(o.numero, o.ano), o.assunto, nomePer[o.responsavel_id],
+      o.data ? o.data.split('-').reverse().join('/') : '',
+      nomeOrg[o.destinatario_id], o.sgd, o.enviado ? 'Enviado' : 'Reservado', o.observacao
+    ]));
+};
+
+/* Cancelar a reserva não apaga a linha: o número some da sequência e alguém vai
+   procurá-lo no arquivo físico. Fica registrado como cancelado. */
+$('#listaOficios').addEventListener('click', async e=>{
+  const b = e.target.closest('[data-cancelar]');
+  if(!b) return;
+  const o = (of.lista||[]).find(x=>x.id === b.dataset.cancelar);
+  if(!o) return;
+  if(!confirm('Cancelar a reserva do ofício ' + numeroOficio(o.numero,o.ano) + '?\n\n'
+    + 'O número não volta para a fila — fica registrado como cancelado, para quem '
+    + 'procurar no arquivo saber por que ele não existe.')) return;
+  b.disabled = true;
+  const { error } = await sb.from('oficios').update({
+    assunto: 'CANCELADO — ' + o.assunto,
+    observacao: [o.observacao, 'reserva cancelada em ' + new Date().toLocaleDateString('pt-BR')
+                 + ' por ' + (eu.nome_completo || eu.nome)].filter(Boolean).join(' · ')
+  }).eq('id', o.id);
+  b.disabled = false;
+  if(error) return recado('#recadoOficios','Não deu para cancelar: ' + error.message);
+  carregarOficios();
+});
 
 $('#btnReservar').onclick = async ()=>{
   recado('#recadoReserva','');
@@ -2511,6 +2578,27 @@ $('#c_rever').addEventListener('change', e=>{
 });
 
 $('#c_mais').onclick = ()=>{ cart.mostrando += CART_PAGINA; desenhaCartorio(); };
+
+/* baixa o que está na tela, com os filtros aplicados — é o que a planilha antiga
+   fazia e o que vão pedir no primeiro relatório */
+$('#c_planilha').onclick = ()=>{
+  if(!cart.dados) return;
+  const lista = filtradasCartorio();
+  if(!lista.length) return recado('#recadoCartorio','Não há nada no filtro para baixar.');
+  baixaCSV('cartorio-' + new Date().toISOString().slice(0,10) + '.csv',
+    ['Protocolo','Caso','Ano','Data','Tipo de exame','Perito','Município','BO','Vítima',
+     'Local','Laudo','SGD','Entregue','Falta completar'],
+    lista.map(d=>[
+      d.protocolo, d.caso, d.ano,
+      dataBR(d.ordem_em || d.data_fato || d.acionamento_em),
+      cart.mapaTipo[d.tipo_exame_id] || d.tipo_exame_bruto,
+      cart.mapaPer[d.perito_id], cart.mapaMun[d.municipio_id],
+      d.bo, d.nome_vitima, d.local_bruto,
+      d.laudo && d.laudo.numero, d.laudo && d.laudo.sgd,
+      d.laudo && d.laudo.entregue ? 'sim' : 'não',
+      d.revisar ? 'sim' : 'não'
+    ]));
+};
 
 $('#c_limpar').onclick = ()=>{
   Object.assign(cart, { ano:'todos', perito:'', municipio:'', tipo:'', laudo:'', termo:'',
@@ -3168,8 +3256,30 @@ $('#btnTrocarSenha').onclick = async ()=>{
 
   if(error) return recado('#recadoSenha','Não deu para trocar: ' + error.message);
   $('#s_nova').value = ''; $('#s_conf').value = '';
+  await sb.from('peritos').update({ senha_trocada:true }).eq('id', eu.id);
+  eu.senha_trocada = true;
+  liberaDepoisDaSenha();
   recado('#recadoSenha','Senha trocada. Use a nova no próximo acesso.','ok');
 };
+
+/* Enquanto a senha provisória não for trocada, só a Conta fica aberta. São contas
+   que leem a base inteira do núcleo, com uma senha que a chefia escolheu e que mais
+   de uma pessoa conhece. Offline não trava ninguém: sem rede não dá para trocar. */
+function exigeTrocaDeSenha(){
+  if(eu.senha_trocada || !navigator.onLine) return;
+  $('#avisoSenha').classList.remove('oculto');
+  document.querySelectorAll('nav button[data-tela]').forEach(b=>{
+    b.classList.toggle('oculto', b.dataset.tela !== 'Conta');
+  });
+  const conta = document.querySelector('nav button[data-tela="Conta"]');
+  if(conta) conta.click();
+}
+
+function liberaDepoisDaSenha(){
+  $('#avisoSenha').classList.add('oculto');
+  document.querySelectorAll('nav button[data-tela]').forEach(b=>b.classList.remove('oculto'));
+  ajustaAbasAoPerfil();
+}
 
 /* ---------- escala vista pelo apoio administrativo ----------
    Ele não entra na escala: não vê a grade do mês, não vê a oficial (que carrega as
