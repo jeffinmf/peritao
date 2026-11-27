@@ -899,7 +899,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.37</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.38</p>
     </div>
   </main>
 
@@ -1753,14 +1753,17 @@ const STATUS_GALILEU = {
   'enviada':'a_receber',
   'criada':'a_receber',
   'cancelada':'cancelada'
+  /* "Finalizada" aparece no Galileu e NÃO está aqui de propósito: é o cartório
+     encerrando a solicitação, e pode acontecer com ou sem perícia feita. Sem
+     saber o que significa no fluxo do núcleo, mapear seria inventar status. Fica
+     sem mapa, e o status que já está na base não é tocado. */
 };
 
-/* O nome que vem junto do status é de quem fez AQUELE status, e no Galileu quem
-   cria e envia pode ser perito ou administrativo — só quem RECEBE é perito.
-   Então o nome só vale como perito do exame depois de recebido. Antes disso é
-   de quem lançou no cartório, e atribuir ali põe exame no nome de quem não
-   periciou. Confirmado por Jefferson em 27/11/2026 no histórico do exame. */
-const STATUS_COM_PERITO = new Set(['recebida','em_pericia','concluida']);
+/* Quem decide se o nome é confiável é a COLHEITA, não esta tela: lá existe o
+   texto cru do status, que às vezes traz "Distribuído para: {perito}" e às vezes
+   só "por {quem mexeu}". A regra está na skill trazer-galileu-peritao. Aqui fica
+   a trava de reserva: nome de gente do apoio administrativo nunca vira perito do
+   exame, e campo vazio entra como sem perito — nunca no perito logado. */
 
 function statusDoGalileu(txt){
   const t = semAcento(txt).replace(/[.:].*$/,'').trim();
@@ -1869,8 +1872,6 @@ $('#btnAplicarSync').onclick = async ()=>{
       const oc = achadas && achadas[0];
 
       const st = statusDoGalileu(status);
-      /* sem status reconhecido, não confio no nome: conservador de propósito */
-      const confia = !!st && STATUS_COM_PERITO.has(st);
       const entregaISO = dataBRparaISO(entrega);
 
       const daUnidade = ondeFica(unidade);
@@ -1886,7 +1887,7 @@ $('#btnAplicarSync').onclick = async ()=>{
         /* Conserta atribuição errada quando o exame já foi recebido: só entra se a
            ocorrência está sem perito ou com alguém do apoio. Perito legítimo no
            lugar jamais é trocado por colheita. */
-        if(confia){
+        {
           const real = acharPorNome(peritos, peritoNome);
           const atual = oc.perito_id ? peritos.find(x=>x.id === oc.perito_id) : null;
           const errado = !oc.perito_id || (atual && atual.vinculo === 'apoio');
@@ -1927,7 +1928,7 @@ $('#btnAplicarSync').onclick = async ()=>{
           ignoradas++; continue;
         }
         const t = acharPorNome(referencias.tipos, tipo);
-        let p = confia ? acharPorNome(peritos, peritoNome) : null;
+        let p = acharPorNome(peritos, peritoNome);
         if(p && p.vinculo === 'apoio') p = null;   /* trava de reserva */
         const doCartorio = !p;
         const novo = {
@@ -1947,9 +1948,7 @@ $('#btnAplicarSync').onclick = async ()=>{
           acionamento_em: dataBRparaISO(entrada) ? dataBRparaISO(entrada)+'T00:00:00' : null,
           revisar: true,
           revisar_motivo: 'Importada do Galileu — '
-            + (p ? '' : (confia ? 'SEM PERITO: nome não reconhecido. '
-                                : 'SEM PERITO: exame ainda não recebido, o nome do Galileu '
-                                  + 'é de quem lançou no cartório. '))
+            + (p ? '' : 'SEM PERITO: a colheita não trouxe perito confiável. ')
             + (daUnidade.municipio_id ? 'faltam local e horários'
                                       : 'faltam município, local e horários')
         };
@@ -1964,9 +1963,7 @@ $('#btnAplicarSync').onclick = async ()=>{
         }
         saida.push({ acao:'importada', protocolo,
           detalhe: (t ? t.nome : (tipo||'tipo não reconhecido'))
-            + (doCartorio ? (confia ? ' · perito não reconhecido'
-                                    : ' · SEM PERITO (ainda não recebido — o nome é de quem lançou)')
-                          : '')
+            + (doCartorio ? ' · SEM PERITO' : '')
             + (daUnidade.municipio_nome ? ' · ' + daUnidade.municipio_nome : '') });
         importadas++;
       }
