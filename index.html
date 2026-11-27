@@ -171,11 +171,12 @@ nav button.ativo{color:var(--destaque)}
 .nav-marca,.nav-pe{display:none}
 
 /* ---------- tela grande: o menu lateral do layout aprovado ----------
-   O rodapé de nove abas é desenho de celular. No PC e no tablet deitado o menu
-   vira coluna à esquerda em azul-noite, com a marca em cima, a aba ativa em
-   pílula amarela e o usuário no pé — exatamente o que está em Main.dc.html. */
-@media (min-width:900px){
-  #app{display:grid;grid-template-columns:248px minmax(0,1fr);
+   O rodapé de nove abas é desenho de celular. De 768px para cima — tablet em pé
+   já conta — o menu vira coluna à esquerda em azul-noite, com a marca em cima, a
+   aba ativa em pílula amarela e o usuário no pé, e com a largura de 220px que o
+   layout Main.dc.html especifica. */
+@media (min-width:768px){
+  #app{display:grid;grid-template-columns:220px minmax(0,1fr);
        grid-template-rows:auto 1fr;min-height:100dvh}
   nav{position:sticky;top:0;left:auto;right:auto;bottom:auto;
       grid-column:1;grid-row:1 / -1;height:100dvh;
@@ -992,7 +993,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.42</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.43</p>
     </div>
   </main>
 
