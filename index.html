@@ -172,6 +172,24 @@ nav button.ativo{color:var(--destaque)}
 .estat b{display:block;font-size:25px;line-height:1.15}
 .estat small{color:var(--suave);font-size:12px}
 
+/* ---------- ofícios ---------- */
+.proximo-num{display:flex;flex-direction:column;gap:3px;background:var(--fundo2);
+  border-color:rgba(240,166,60,.45)}
+.proximo-num small{font-size:12px;color:var(--suave)}
+.proximo-num b{font-size:30px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}
+
+.oficio{background:var(--cartao);border:1px solid var(--borda);border-radius:14px;
+  padding:13px 14px;margin-bottom:9px}
+.oficio .cab{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin-bottom:5px}
+.oficio .num{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+.oficio .assunto{font-size:14px;line-height:1.35;margin-bottom:5px}
+.oficio .meta{font-size:12px;color:var(--suave);line-height:1.5}
+.oficio .meta b{color:var(--texto);font-weight:600}
+.oficio .envio{display:flex;gap:7px;align-items:center;margin-top:10px}
+.oficio .envio input{flex:1;min-width:0;padding:10px}
+.oficio .envio button{flex:none;height:42px;padding:0 13px;border:0;border-radius:11px;
+  background:var(--destaque);color:#15222f;font:inherit;font-weight:600;cursor:pointer}
+
 /* ---------- mapa do crime ---------- */
 .sub{margin:-8px 0 14px;font-size:13px;color:var(--suave)}
 .numeros{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:14px}
@@ -576,6 +594,75 @@ nav button.ativo{color:var(--destaque)}
       </div>
     </div>
 
+    <!-- ---- ofícios ---- -->
+    <div id="telaOficios" class="oculto">
+      <h2>Ofícios</h2>
+      <p class="sub">Numeração única do núcleo por ano</p>
+      <div class="recado" id="recadoOficios"></div>
+
+      <div class="cartao proximo-num">
+        <small>Próximo número livre</small>
+        <b id="proximoNumero">—</b>
+      </div>
+
+      <div class="cartao">
+        <h3 class="tit-tabela">Novo ofício</h3>
+        <label class="campo">
+          <span>Assunto *</span>
+          <select id="of_assunto"></select>
+        </label>
+        <label class="campo oculto" id="linhaAssuntoLivre">
+          <span>Qual assunto</span>
+          <input type="text" id="of_assunto_livre" placeholder="Escreva o assunto">
+        </label>
+        <label class="campo">
+          <span>Destinatário</span>
+          <select id="of_destinatario"></select>
+        </label>
+        <label class="campo">
+          <span>Protocolo relacionado</span>
+          <input type="text" id="of_protocolo" inputmode="numeric" placeholder="Protocolo do Galileu, se houver">
+        </label>
+        <label class="campo">
+          <span>Observação</span>
+          <textarea id="of_observacao" rows="3" placeholder="O que for útil para quem ler depois"></textarea>
+        </label>
+        <button class="botao" id="btnReservar">Reservar número</button>
+        <div class="recado" id="recadoReserva"></div>
+        <div style="font-size:12px;color:var(--suave);margin-top:10px;line-height:1.5">
+          O número fica reservado no teu nome. Depois de enviar, informe o nº SGD para
+          marcar como enviado.
+        </div>
+      </div>
+
+      <div class="cartao">
+        <label class="campo">
+          <span>Busca</span>
+          <input type="search" id="of_busca" placeholder="Número, assunto, SGD ou protocolo">
+        </label>
+        <div class="linha">
+          <label class="campo" style="flex:1">
+            <span>Ano</span>
+            <select id="of_ano"></select>
+          </label>
+          <label class="campo" style="flex:1">
+            <span>Situação</span>
+            <select id="of_situacao">
+              <option value="">Todas</option>
+              <option value="reservado">Reservado</option>
+              <option value="enviado">Enviado</option>
+            </select>
+          </label>
+        </div>
+        <label class="campo">
+          <span>Responsável</span>
+          <select id="of_responsavel"></select>
+        </label>
+      </div>
+
+      <div id="listaOficios"></div>
+    </div>
+
     <!-- ---- mapa do crime ---- -->
     <div id="telaMapa" class="oculto">
       <h2>Mapa do crime</h2>
@@ -745,7 +832,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.21</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.22</p>
     </div>
   </main>
 
@@ -761,6 +848,10 @@ nav button.ativo{color:var(--destaque)}
     <button data-tela="Buscar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
       Buscar
+    </button>
+    <button data-tela="Oficios">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
+      Ofícios
     </button>
     <button data-tela="Mapa">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>
@@ -1324,7 +1415,7 @@ document.querySelectorAll('nav button').forEach(b=>{
   b.onclick = ()=>{
     document.querySelectorAll('nav button').forEach(x=>x.classList.remove('ativo'));
     b.classList.add('ativo');
-    ['Nova','Minhas','Buscar','Mapa','Escala','Galileu','Conta'].forEach(t=>
+    ['Nova','Minhas','Buscar','Mapa','Escala','Oficios','Galileu','Conta'].forEach(t=>
       $('#tela'+t).classList.toggle('oculto', t!==b.dataset.tela));
     $('.rodape').classList.toggle('oculto', b.dataset.tela!=='Nova');
     if(b.dataset.tela==='Minhas') carregarMinhas();
@@ -1332,6 +1423,7 @@ document.querySelectorAll('nav button').forEach(b=>{
     if(b.dataset.tela==='Galileu') carregarGalileu();
     if(b.dataset.tela==='Escala') carregaConfig().then(carregarEscala);
     if(b.dataset.tela==='Mapa') carregarMapa();
+    if(b.dataset.tela==='Oficios') carregarOficios();
     window.scrollTo(0,0);
   };
 });
@@ -1766,6 +1858,172 @@ $('#btnAplicarSync').onclick = async ()=>{
   recado('#recadoSync', resumo, erros ? 'aviso' : 'ok');
   carregarGalileu();
 };
+
+/* ================= OFÍCIOS =================
+   Numeração única do núcleo por ano. Quem reserva fica como responsável; o
+   número só é dado pelo banco, pela função reservar_oficio, para dois peritos
+   clicando junto nunca levarem o mesmo. */
+
+const ASSUNTOS = [
+  'Perícia não realizada',
+  'Perícia não acionada',
+  'Não realização de laudo — ausência de vestígios',
+  'Solicitação de exame pericial',
+  'Pedido de dilação de prazo',
+  'Destinação de armas impróprias',
+  'Outro'
+];
+
+const of = { ano:new Date().getFullYear(), lista:[], peritos:[] };
+
+function numeroOficio(n, ano){ return String(n).padStart(3,'0') + '/' + ano; }
+
+async function carregarOficios(){
+  recado('#recadoOficios','');
+  if(!navigator.onLine){
+    $('#listaOficios').innerHTML = '<div class="vazio">Os ofícios precisam de conexão.</div>';
+    return;
+  }
+  if(!of.montou){
+    $('#of_assunto').innerHTML = ASSUNTOS.map(a=>`<option value="${escapar(a)}">${escapar(a)}</option>`).join('');
+    const { data: per } = await sb.from('peritos').select('id,nome')
+      .in('vinculo',['fixo','ex_fixo']).order('nome');
+    of.peritos = per || [];
+    $('#of_responsavel').innerHTML = '<option value="">Todos</option>'
+      + of.peritos.map(p=>`<option value="${p.id}">${escapar(p.nome)}</option>`).join('');
+    $('#of_destinatario').innerHTML = '<option value="">Sem destinatário definido</option>'
+      + (referencias.orgaos||[]).map(o=>`<option value="${o.id}">${escapar(rotuloOrgao(o))}</option>`).join('');
+    montaCombo('of_destinatario','Digite a delegacia ou órgão');
+    const agora = new Date().getFullYear();
+    const anos = []; for(let a=agora; a>=2021; a--) anos.push(a);
+    $('#of_ano').innerHTML = anos.map(a=>`<option value="${a}">${a}</option>`).join('');
+    $('#of_ano').value = of.ano;
+    of.montou = true;
+  }
+
+  const { data, error } = await sb.from('oficios')
+    .select('id,numero,ano,assunto,sgd,enviado,data,observacao,responsavel_id,destinatario_id,ocorrencia_id')
+    .eq('ano', of.ano).order('numero',{ascending:false});
+  if(error){ recado('#recadoOficios','Não deu para ler os ofícios: '+error.message); return; }
+  of.lista = data || [];
+
+  const maior = of.lista.reduce((m,o)=>Math.max(m,o.numero), 0);
+  $('#proximoNumero').textContent = numeroOficio(maior + 1, of.ano);
+  $('#btnReservar').textContent = 'Reservar nº ' + numeroOficio(maior + 1, of.ano);
+
+  desenhaOficios();
+}
+
+function desenhaOficios(){
+  const busca = ($('#of_busca').value || '').trim().toLowerCase();
+  const sit = $('#of_situacao').value;
+  const resp = $('#of_responsavel').value;
+  const nomePer = {}; of.peritos.forEach(p=>{ nomePer[p.id] = p.nome; });
+  const nomeOrg = {}; (referencias.orgaos||[]).forEach(o=>{ nomeOrg[o.id] = rotuloOrgao(o); });
+
+  const filtrados = of.lista.filter(o=>{
+    if(sit === 'enviado' && !o.enviado) return false;
+    if(sit === 'reservado' && o.enviado) return false;
+    if(resp && String(o.responsavel_id) !== resp) return false;
+    if(!busca) return true;
+    return [numeroOficio(o.numero,o.ano), o.assunto, o.sgd, o.observacao, nomeOrg[o.destinatario_id]]
+      .filter(Boolean).join(' ').toLowerCase().includes(busca);
+  });
+
+  if(!filtrados.length){
+    $('#listaOficios').innerHTML = `<div class="vazio">${of.lista.length
+      ? 'Nenhum ofício com esses filtros.' : 'Nenhum ofício em ' + of.ano + ' ainda.'}</div>`;
+    return;
+  }
+
+  $('#listaOficios').innerHTML = filtrados.map(o=>{
+    const selo = o.enviado
+      ? '<span class="selo publicada">Enviado</span>'
+      : '<span class="selo rascunho">Reservado</span>';
+    const meta = [
+      nomePer[o.responsavel_id] ? 'Responsável: <b>'+escapar(nomePer[o.responsavel_id])+'</b>' : null,
+      o.data ? 'Reservado em ' + o.data.split('-').reverse().join('/') : null,
+      nomeOrg[o.destinatario_id] ? 'Para ' + escapar(nomeOrg[o.destinatario_id]) : null,
+      o.sgd ? 'SGD <b>'+escapar(o.sgd)+'</b>' : null
+    ].filter(Boolean).join(' · ');
+
+    const meu = o.responsavel_id === eu.id || eu.perfil === 'administrador';
+    const envio = (!o.enviado && meu)
+      ? `<div class="envio">
+           <input type="text" placeholder="Nº SGD, para marcar como enviado" data-sgd="${o.id}">
+           <button type="button" data-enviar="${o.id}">Enviei</button>
+         </div>` : '';
+
+    return `<div class="oficio">
+      <div class="cab"><span class="num">${numeroOficio(o.numero,o.ano)}</span>${selo}</div>
+      <div class="assunto">${escapar(o.assunto)}</div>
+      <div class="meta">${meta}</div>
+      ${o.observacao ? `<div class="meta" style="margin-top:6px">${escapar(o.observacao)}</div>` : ''}
+      ${envio}
+    </div>`;
+  }).join('');
+}
+
+$('#of_assunto').onchange = ()=>{
+  const outro = $('#of_assunto').value === 'Outro';
+  $('#linhaAssuntoLivre').classList.toggle('oculto', !outro);
+  if(outro) $('#of_assunto_livre').focus();
+};
+['#of_busca','#of_situacao','#of_responsavel'].forEach(s=>{
+  $(s).addEventListener(s==='#of_busca' ? 'input' : 'change', desenhaOficios);
+});
+$('#of_ano').onchange = ()=>{ of.ano = Number($('#of_ano').value); carregarOficios(); };
+
+$('#btnReservar').onclick = async ()=>{
+  recado('#recadoReserva','');
+  let assunto = $('#of_assunto').value;
+  if(assunto === 'Outro'){
+    assunto = ($('#of_assunto_livre').value || '').trim();
+    if(!assunto) return recado('#recadoReserva','Escreva qual é o assunto.');
+  }
+
+  /* protocolo é opcional, mas se vier tem de existir — senão o ofício aponta para o nada */
+  let ocorrenciaId = null;
+  const prot = ($('#of_protocolo').value || '').trim();
+  if(prot){
+    const { data } = await sb.from('ocorrencias').select('id')
+      .eq('protocolo', prot).is('excluido_em', null).limit(1);
+    if(!data || !data.length)
+      return recado('#recadoReserva','Não achei o protocolo '+prot+' no Peritão. Confira, ou deixe em branco.');
+    ocorrenciaId = data[0].id;
+  }
+
+  $('#btnReservar').disabled = true;
+  recado('#recadoReserva','Reservando…');
+  const { data, error } = await sb.rpc('reservar_oficio', {
+    p_assunto: assunto,
+    p_ano: of.ano,
+    p_destinatario_id: $('#of_destinatario').value ? Number($('#of_destinatario').value) : null,
+    p_ocorrencia_id: ocorrenciaId,
+    p_observacao: ($('#of_observacao').value || '').trim() || null
+  });
+  $('#btnReservar').disabled = false;
+  if(error) return recado('#recadoReserva','Não deu para reservar: '+error.message);
+
+  const reservado = Array.isArray(data) ? data[0] : data;
+  recado('#recadoReserva','Reservado o nº ' + numeroOficio(reservado.numero, reservado.ano) + '.', 'ok');
+  $('#of_protocolo').value = ''; $('#of_observacao').value = '';
+  $('#of_assunto_livre').value = ''; $('#linhaAssuntoLivre').classList.add('oculto');
+  $('#of_assunto').value = ASSUNTOS[0];
+  carregarOficios();
+};
+
+$('#listaOficios').addEventListener('click', async ev=>{
+  const b = ev.target.closest('[data-enviar]'); if(!b) return;
+  const id = b.dataset.enviar;
+  const campo = $(`[data-sgd="${id}"]`);
+  const sgd = (campo.value || '').trim();
+  if(!sgd) return recado('#recadoOficios','Informe o nº SGD para marcar como enviado.');
+  const { error } = await sb.from('oficios').update({ sgd, enviado:true }).eq('id', id);
+  if(error) return recado('#recadoOficios','Não deu para marcar: '+error.message);
+  recado('#recadoOficios','Marcado como enviado.','ok');
+  carregarOficios();
+});
 
 /* ================= MAPA DO CRIME =================
    Só entram ocorrências com deslocamento, isto é, as do módulo externo:
