@@ -745,7 +745,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.19</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.20</p>
     </div>
   </main>
 
@@ -1598,24 +1598,27 @@ function ondeFica(unidade){
   /* O Galileu escreve a unidade de três jeitos, e só estes três valem.
      Busca por "contém" ficaria frouxa: "Polícia Militar", sozinho, casaria com o
      9º BPM de Araguatins e inventaria município. */
-  const org = (referencias.orgaos || []).find(o=>{
+  let org = null, especifico = false;
+  for(const o of (referencias.orgaos || [])){
     const g = o.nome_galileu ? chave(o.nome_galileu) : '';
-    if(g && g === alvo) return true;                       /* nome do Galileu inteiro */
-    if(chave(o.nome) === alvo) return true;                /* só o nome do órgão */
-    if(g){
-      const partes = g.split(' - ');
-      /* o mesmo nome sem a sigla da frente: "13ª Delegacia de Polícia - Augustinópolis" */
-      if(partes.length > 1 && partes.slice(1).join(' - ') === alvo) return true;
-      /* um trecho inteiro, desde que específico: "9° Batalhão de Polícia Militar" */
-      if(alvo.length > 12 && partes.some(p=>p === alvo)) return true;
+    const partes = g ? g.split(' - ') : [];
+    /* formas específicas: nomeiam a unidade, e a unidade fica em algum lugar */
+    if((g && g === alvo)
+       || (partes.length > 1 && partes.slice(1).join(' - ') === alvo)
+       || (alvo.length > 12 && partes.some(p=>p === alvo))){
+      org = o; especifico = true; break;
     }
-    return false;
-  });
+    /* forma genérica: é a instituição, não a unidade. Serve para o órgão, não para o lugar. */
+    if(chave(o.nome) === alvo && !org) org = o;
+  }
   if(!org) return vazio;
 
-  const texto = org.nome_galileu || org.nome || '';
-  for(const trecho of texto.split(' - ')){
-    const lista = referencias.municipiosTodos || referencias.municipios || [];
+  /* "Polícia Militar" é a corporação inteira; o batalhão de Araguatins é outra coisa.
+     De nome genérico não se tira município — seria inventar onde foi o fato. */
+  if(!especifico) return { orgao_id: org.id, municipio_id:null, municipio_nome:null };
+
+  const lista = referencias.municipiosTodos || referencias.municipios || [];
+  for(const trecho of (org.nome_galileu || org.nome || '').split(' - ')){
     const m = lista.find(x=>chave(x.nome) === chave(trecho));
     if(m) return { orgao_id: org.id, municipio_id: m.id, municipio_nome: m.nome };
   }
