@@ -899,7 +899,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.33</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.34</p>
     </div>
   </main>
 
@@ -3012,8 +3012,10 @@ const apo = { dia:null };
 
 function modoEscalaApoio(){
   $('#escApoio').classList.remove('oculto');
+  /* escopado a #telaEscala: existe outro .abas na tela do Galileu, e o
+     querySelector solto pegava aquele */
   ['.mes-nav', '.abas', '#escInterna'].forEach(sel=>{
-    const el = document.querySelector(sel);
+    const el = document.querySelector('#telaEscala ' + sel);
     if(el) el.classList.add('oculto');
   });
   const t = document.querySelector('#telaEscala h2');
