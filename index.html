@@ -558,10 +558,6 @@ nav button.ativo{color:var(--destaque)}
     <div id="telaCartorio" class="oculto">
       <h2>Cartório</h2>
       <p class="sub">Todas as ocorrências do núcleo · somente leitura</p>
-      <button type="button" class="botao" id="c_atualizar" style="margin-bottom:14px">
-        Atualizar base de dados
-      </button>
-      <div id="c_quando" style="font-size:11.5px;color:var(--suave);margin:-8px 0 14px"></div>
       <div class="recado" id="recadoCartorio"></div>
 
       <div class="cartao">
@@ -734,10 +730,6 @@ nav button.ativo{color:var(--destaque)}
           <span>Tipo de perícia</span>
           <select id="m_tipo"></select>
         </label>
-        <label class="troca" id="linhaEstimados">
-          <input type="checkbox" id="m_estimados" checked>
-          <span style="font-size:13.5px">Incluir município estimado pelo órgão requisitante</span>
-        </label>
       </div>
 
       <div class="numeros" id="mapaNumeros"></div>
@@ -888,7 +880,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.29</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.30</p>
     </div>
   </main>
 
@@ -1854,10 +1846,8 @@ $('#btnAplicarSync').onclick = async ()=>{
         if(caso && !oc.caso) mudanca.caso = caso;
         /* preenche o que falta, sem jamais passar por cima do que já está lá */
         if(daUnidade.orgao_id && !oc.orgao_acionamento_id) mudanca.orgao_acionamento_id = daUnidade.orgao_id;
-        if(daUnidade.municipio_id && !oc.municipio_id){
-          mudanca.municipio_id = daUnidade.municipio_id;
-          mudanca.municipio_estimado = true;
-        }
+        /* a unidade solicitante diz onde o exame foi: é o local, não um chute */
+        if(daUnidade.municipio_id && !oc.municipio_id) mudanca.municipio_id = daUnidade.municipio_id;
         if(Object.keys(mudanca).length){
           const { error } = await sb.from('ocorrencias').update(mudanca).eq('id', oc.id);
           if(error) throw error;
@@ -1879,7 +1869,7 @@ $('#btnAplicarSync').onclick = async ()=>{
             mudanca.status ? 'status → '+mudanca.status : null,
             laudoNum ? 'laudo '+laudoNum : null,
             entregaISO ? 'entregue' : null,
-            mudanca.municipio_id ? 'município ' + daUnidade.municipio_nome + ' (estimado)' : null
+            mudanca.municipio_id ? 'município ' + daUnidade.municipio_nome : null
           ].filter(Boolean).join(', ') || 'sem mudança' });
           atualizadas++;
         } else { saida.push({ acao:'igual', protocolo, detalhe:'nada a mudar' }); iguais++; }
@@ -1905,11 +1895,10 @@ $('#btnAplicarSync').onclick = async ()=>{
           observacoes: [documento, unidade].filter(Boolean).join(' · ') || null,
           orgao_acionamento_id: daUnidade.orgao_id || null,
           municipio_id: daUnidade.municipio_id || null,
-          municipio_estimado: !!daUnidade.municipio_id,
           acionamento_em: dataBRparaISO(entrada) ? dataBRparaISO(entrada)+'T00:00:00' : null,
           revisar: true,
           revisar_motivo: daUnidade.municipio_id
-            ? 'Importada do Galileu — município estimado pelo órgão requisitante; faltam local e horários'
+            ? 'Importada do Galileu — faltam local e horários'
             : 'Importada do Galileu — faltam município, local e horários'
         };
         const { data: ins, error } = await sb.from('ocorrencias').insert(novo).select('id').single();
@@ -1924,7 +1913,7 @@ $('#btnAplicarSync').onclick = async ()=>{
         saida.push({ acao:'importada', protocolo,
           detalhe: (t ? t.nome : (tipo||'tipo não reconhecido'))
             + (p ? '' : ' · perito não reconhecido')
-            + (daUnidade.municipio_nome ? ' · ' + daUnidade.municipio_nome + ' (estimado)' : '') });
+            + (daUnidade.municipio_nome ? ' · ' + daUnidade.municipio_nome : '') });
         importadas++;
       }
     }catch(err){
@@ -2128,7 +2117,7 @@ $('#listaOficios').addEventListener('click', async ev=>{
    saiu da perícia e município de outro núcleo ficam de fora — a ocorrência
    continua na base e na estatística de produção, só não entra neste mapa. */
 
-const mapa = { ano:'todos', tipo:'', estimados:true, dados:null,
+const mapa = { ano:'todos', tipo:'', dados:null,
                municipios:[], peritos:[], doQuadro:new Set(), doNucleo:new Set() };
 
 function escalaCor(n, maior){
@@ -2196,7 +2185,7 @@ async function leBaseCartorio(){
   for(let de = 0; ; de += passo){
     const { data, error } = await sb.from('ocorrencias')
       .select('id,ano,protocolo,caso,bo,nome_vitima,local_bruto,ordem_em,data_fato,acionamento_em,'
-            + 'perito_id,municipio_id,municipio_estimado,tipo_exame_id,tipo_exame_bruto,origem,status,revisar')
+            + 'perito_id,municipio_id,tipo_exame_id,tipo_exame_bruto,origem,status,revisar')
       .is('excluido_em', null).eq('teste', false)
       .order('id').range(de, de + passo - 1);
     if(error) throw error;
@@ -2286,7 +2275,7 @@ function cartaoCartorio(d){
   const partes = [];
   if(d.protocolo) partes.push('nº ' + d.protocolo);
   const mun = cart.mapaMun[d.municipio_id];
-  if(mun) partes.push(mun + (d.municipio_estimado ? ' (estimado)' : ''));
+  if(mun) partes.push(mun);
   partes.push(dataBR(d.ordem_em || d.data_fato || d.acionamento_em));
   const per = cart.mapaPer[d.perito_id];
   if(per) partes.push(primeiroNome(per));
@@ -2328,13 +2317,10 @@ function desenhaCartorio(){
       : 'Ver mais';
   }
 
-  $('#c_quando').textContent = cart.lidoEm
-    ? 'Base lida às ' + cart.lidoEm.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})
-      + ' de ' + cart.lidoEm.toLocaleDateString('pt-BR')
-    : '';
   $('#cartorioNota').textContent = 'Base de ' + cart.dados.length.toLocaleString('pt-BR')
-    + ' ocorrências do núcleo, da planilha e das atualizações do Galileu. '
-    + 'Tela só de leitura: correção de dado importado se faz no Galileu e volta no próximo Trazer.';
+    + ' ocorrências do núcleo, da planilha e das atualizações do Galileu, lida'
+    + (cart.lidoEm ? ' às ' + cart.lidoEm.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '')
+    + '. Tela só de leitura: correção de dado importado se faz no Galileu e volta no próximo Trazer.';
 }
 
 function filtroCartorio(id, campo){
@@ -2357,24 +2343,6 @@ $('#c_rever').addEventListener('change', e=>{
 
 $('#c_mais').onclick = ()=>{ cart.mostrando += CART_PAGINA; desenhaCartorio(); };
 
-/* Relê a base inteira. O que o Trazer acabou de aplicar não aparece sozinho: a
-   leitura fica em memória pela sessão toda, de propósito, senão cada filtro
-   custaria treze requisições. Daí o botão. */
-$('#c_atualizar').onclick = async ()=>{
-  if(cart.carregando) return;
-  const b = $('#c_atualizar');
-  b.disabled = true;
-  b.textContent = 'Atualizando…';
-  cart.dados = null;
-  cart.mostrando = CART_PAGINA;
-  $('#cartorioNumeros').innerHTML = '';
-  try{
-    await carregarCartorio();
-  }finally{
-    b.disabled = false;
-    b.textContent = 'Atualizar base de dados';
-  }
-};
 $('#c_limpar').onclick = ()=>{
   Object.assign(cart, { ano:'todos', perito:'', municipio:'', tipo:'', laudo:'', termo:'',
                         rever:false, mostrando:CART_PAGINA });
@@ -2414,7 +2382,7 @@ async function carregarMapa(){
     const passo = 1000;
     for(let de = 0; ; de += passo){
       const { data, error } = await sb.from('ocorrencias')
-        .select('id,ano,municipio_id,municipio_estimado,perito_id,tipo_exame_id,latitude,longitude,origem')
+        .select('id,ano,municipio_id,perito_id,tipo_exame_id,latitude,longitude,origem')
         .is('excluido_em',null).eq('teste',false)
         .order('id').range(de, de + passo - 1);
       if(error){ recado('#recadoMapa','Não deu para ler as ocorrências: '+error.message); return; }
@@ -2458,7 +2426,6 @@ function filtradas(){
     d.externa &&
     (mapa.ano === 'todos' || d.ano === Number(mapa.ano)) &&
     (!mapa.tipo || d.tipo_exame_id === Number(mapa.tipo)) &&
-    (mapa.estimados || !d.municipio_estimado) &&
     mapa.doQuadro.has(d.perito_id) &&
     mapa.doNucleo.has(d.municipio_id)
   );
@@ -2470,9 +2437,8 @@ function desenhaMapa(){
   const nomePer = {}; mapa.peritos.forEach(p=>{ nomePer[p.id] = p.nome; });
 
   const porMun = {}, porPerito = {}, porTipo = {};
-  let semMunicipio = 0, laudosOk = 0, estimados = 0;
+  let semMunicipio = 0, laudosOk = 0;
   linhas.forEach(d=>{
-    if(d.municipio_estimado) estimados++;
     if(d.municipio_id) porMun[d.municipio_id] = (porMun[d.municipio_id]||0) + 1;
     else semMunicipio++;
     if(d.laudoOk) laudosOk++;
@@ -2535,7 +2501,6 @@ function desenhaMapa(){
     'A cor mostra quantas ocorrências externas houve em cada município — só as com deslocamento, do módulo de perícia externa. '
     + 'Exame que chega por requisição, sem ida ao local, não entra.<br>'
     + 'Alfinete só onde existe coordenada registrada no campo — nada é espalhado por dentro do município, para não inventar lugar.'
-    + (estimados ? `<br>${estimados} ${estimados===1?'tem município estimado':'têm município estimado'} pelo órgão requisitante — a delegacia que pediu nem sempre fica onde foi o fato.` : '')
     + `<br>Conta só o quadro atual — ${mapa.peritos.map(p=>escapar(p.nome)).join(', ')} — e os ${mapa.municipios.length} municípios da área do núcleo.`
     + (semMunicipio ? `<br><b style="color:var(--alerta)">${semMunicipio} ${semMunicipio===1?'ocorrência ficou de fora':'ocorrências ficaram de fora'} por não ter município.</b>` : '');
 
@@ -2607,7 +2572,6 @@ function centroDoMunicipio(d){
 
 $('#m_periodo').onchange = ()=>{ mapa.ano = $('#m_periodo').value; desenhaMapa(); };
 $('#m_tipo').onchange = ()=>{ mapa.tipo = $('#m_tipo').value; desenhaMapa(); };
-$('#m_estimados').onchange = ()=>{ mapa.estimados = $('#m_estimados').checked; desenhaMapa(); };
 
 /* ---------- instalar no celular ----------
    O Chrome e o Edge avisam por beforeinstallprompt e deixam instalar com um toque.
