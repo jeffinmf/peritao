@@ -899,7 +899,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.31</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.32</p>
     </div>
   </main>
 
@@ -3046,7 +3046,7 @@ async function mostraPlantao(){
     alvo.innerHTML = '<div class="vazio">A consulta precisa de conexão.</div>';
     return;
   }
-  const [ano, mes, dia] = apo.dia.split('-').map(Number);
+  const [ano, mes, diaN] = apo.dia.split('-').map(Number);
   alvo.innerHTML = '<div class="carregando">Carregando…</div>';
 
   const { data: escala, error } = await sb.from('escalas')
@@ -3063,7 +3063,7 @@ async function mostraPlantao(){
   }
 
   const { data: plantoes, error: e2 } = await sb.from('escala_plantoes')
-    .select('turno,peritos(nome)').eq('escala_id', escala.id).eq('dia', dia);
+    .select('turno,peritos(nome)').eq('escala_id', escala.id).eq('dia', apo.dia);
   if(e2){
     recado('#recadoEscala', 'Não deu para ler o plantão: ' + e2.message);
     alvo.innerHTML = '';
@@ -3073,7 +3073,7 @@ async function mostraPlantao(){
   const lista = plantoes || [];
   if(!lista.length){
     alvo.innerHTML = '<div class="item pendente"><h3>Dia sem cobertura lançada</h3>' +
-      '<div class="meta"><span>' + escapar(porExtenso(ano, mes, dia)) + '</span></div></div>';
+      '<div class="meta"><span>' + escapar(porExtenso(ano, mes, diaN)) + '</span></div></div>';
     return;
   }
 
@@ -3082,7 +3082,7 @@ async function mostraPlantao(){
   lista.sort((x,y)=> (ordem[x.turno] ?? 9) - (ordem[y.turno] ?? 9));
 
   alvo.innerHTML = '<div class="cartao" style="margin-bottom:10px;font-size:13px;color:var(--suave)">'
-    + escapar(porExtenso(ano, mes, dia)) + '</div>'
+    + escapar(porExtenso(ano, mes, diaN)) + '</div>'
     + lista.map(p=>{
         const t = TURNOS[p.turno] || { curto:p.turno, faixa:'' };
         return '<div class="item concluida"><h3>' + escapar(p.peritos ? p.peritos.nome : '—') + '</h3>'
@@ -3091,7 +3091,7 @@ async function mostraPlantao(){
       }).join('');
 }
 
-function porExtenso(ano, mes, dia){
+function porExtenso(ano, mes, diaN){
   const d = new Date(ano, mes-1, dia);
   const semana = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira',
                   'sexta-feira','sábado'][d.getDay()];
