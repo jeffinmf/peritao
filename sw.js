@@ -2,8 +2,18 @@
 // Guarda a casca do app para abrir sem rede. Dados nunca são cacheados:
 // as chamadas ao Supabase passam direto e, se falharem, o app põe na fila local.
 
-const CACHE = 'peritao-v41';
-const CASCA = ['index.html', 'mapa-bico.js', 'manifest.json', 'icon-192.png', 'icon-512.png'];
+const CACHE = 'peritao-v42';
+const CASCA = [
+  'index.html', 'mapa-bico.js', 'manifest.json', 'icon-192.png', 'icon-512.png',
+  // Fontes da identidade. Entram na casca para a tipografia sobreviver offline
+  // e para o app não depender de servidor de fonte de terceiro.
+  'fontes/archivo-latin-800-normal.woff2',
+  'fontes/ibm-plex-sans-latin-400-normal.woff2',
+  'fontes/ibm-plex-sans-latin-500-normal.woff2',
+  'fontes/ibm-plex-sans-latin-600-normal.woff2',
+  'fontes/ibm-plex-mono-latin-400-normal.woff2',
+  'fontes/ibm-plex-mono-latin-500-normal.woff2'
+];
 
 self.addEventListener('install', e => {
   e.waitUntil(

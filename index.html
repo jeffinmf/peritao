@@ -3,24 +3,47 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0f1b2d">
+<meta name="theme-color" content="#14263F">
 <title>Peritão</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
+/* Fontes da identidade, servidas do próprio repositório. Não vão a servidor de
+   terceiro: mesma razão do mapa — sistema de perícia não deve avisar ninguém de
+   fora a cada tela aberta — e assim a tipografia sobrevive offline. Só o subconjunto
+   latin, que cobre o português inteiro. */
+@font-face{font-family:'Archivo';font-style:normal;font-weight:800;font-display:swap;
+  src:url('fontes/archivo-latin-800-normal.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:400;font-display:swap;
+  src:url('fontes/ibm-plex-sans-latin-400-normal.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:500;font-display:swap;
+  src:url('fontes/ibm-plex-sans-latin-500-normal.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:600;font-display:swap;
+  src:url('fontes/ibm-plex-sans-latin-600-normal.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;
+  src:url('fontes/ibm-plex-mono-latin-400-normal.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;
+  src:url('fontes/ibm-plex-mono-latin-500-normal.woff2') format('woff2')}
+
+/* Cores da identidade aprovada. Os tons de texto, borda e apagado saem do menu
+   lateral do layout, que é o único componente escuro já desenhado — então o app
+   escuro herda deles em vez de inventar. */
 :root{
-  --fundo:#0f1b2d; --fundo2:#16263d; --cartao:#1c3049; --borda:#2b4463;
-  --texto:#eef4fb; --suave:#9db2cc; --destaque:#f0a63c; --destaque2:#ffbe5c;
+  --fundo:#14263F; --fundo2:#0F1C30; --cartao:#1B3254; --borda:#2C4263;
+  --texto:#E8EEF6; --suave:#B4C3D8; --destaque:#F5B800; --destaque2:#FFD24D;
+  --acao:#1F4E8C; --elo:#8FBDF2;
   --ok:#3fb27f; --erro:#e4624d; --alerta:#e8b84b;
+  --titulo:'Archivo','IBM Plex Sans',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
   --r:14px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;height:100%}
 body{
   background:var(--fundo); color:var(--texto);
-  font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font:16px/1.45 'IBM Plex Sans',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom);
   overscroll-behavior-y:none;
 }
@@ -31,7 +54,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 #login{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;padding:28px 22px;gap:18px}
 .marca{display:flex;align-items:center;gap:12px;margin-bottom:6px}
 .marca svg{width:52px;height:52px;flex:none}
-.marca h1{margin:0;font-size:30px;letter-spacing:-.5px}
+.marca h1{margin:0;font-size:34px;font-family:var(--titulo);font-weight:800;letter-spacing:-.02em}
 .marca p{margin:2px 0 0;color:var(--suave);font-size:13px}
 .campo{display:block;margin-bottom:14px}
 .campo span{display:block;font-size:13px;color:var(--suave);margin-bottom:6px;font-weight:600}
@@ -128,7 +151,10 @@ header .quem small{color:var(--suave);font-size:12px}
 .pilula.fila{border-color:var(--destaque);color:var(--destaque)}
 
 main{flex:1;padding:16px 16px 96px}
-h2{margin:0 0 14px;font-size:20px}
+h2{margin:0 0 14px;font-size:22px;font-family:var(--titulo);font-weight:800;letter-spacing:-.01em}
+h3{font-family:inherit}
+.num,.tab td.num,.tab th.num{font-family:var(--mono)}
+.numero b{font-family:var(--mono)}
 .cartao{background:var(--cartao);border:1px solid var(--borda);border-radius:var(--r);padding:16px;margin-bottom:14px}
 
 nav{
@@ -142,6 +168,48 @@ nav button{
 }
 nav button svg{width:22px;height:22px}
 nav button.ativo{color:var(--destaque)}
+.nav-marca,.nav-pe{display:none}
+
+/* ---------- tela grande: o menu lateral do layout aprovado ----------
+   O rodapé de nove abas é desenho de celular. No PC e no tablet deitado o menu
+   vira coluna à esquerda em azul-noite, com a marca em cima, a aba ativa em
+   pílula amarela e o usuário no pé — exatamente o que está em Main.dc.html. */
+@media (min-width:900px){
+  #app{display:grid;grid-template-columns:248px minmax(0,1fr);
+       grid-template-rows:auto 1fr;min-height:100dvh}
+  nav{position:sticky;top:0;left:auto;right:auto;bottom:auto;
+      grid-column:1;grid-row:1 / -1;height:100dvh;
+      flex-direction:column;align-items:stretch;gap:4px;
+      border-top:0;border-right:1px solid var(--borda);
+      background:var(--fundo2);padding:22px 14px 16px;overflow-y:auto}
+  nav button{flex:0 0 auto;flex-direction:row;justify-content:flex-start;gap:12px;
+             padding:11px 12px;border-radius:8px;font-size:14.5px;font-weight:600;
+             color:var(--texto)}
+  nav button svg{width:20px;height:20px}
+  nav button:hover{background:rgba(255,255,255,.06)}
+  nav button.ativo{background:var(--destaque);color:#14263F}
+  nav button.ativo:hover{background:var(--destaque)}
+
+  .nav-marca{display:flex;align-items:center;gap:10px;padding:0 8px 18px}
+  .nav-marca svg{width:38px;height:38px;flex:none}
+  .nav-marca b{display:block;font-family:var(--titulo);font-weight:800;
+               font-size:22px;line-height:1;letter-spacing:-.01em}
+  .nav-marca small{display:block;font-size:11.5px;color:var(--suave);margin-top:3px}
+
+  .nav-pe{display:block;margin-top:auto;padding:12px 10px 0;
+          border-top:1px solid var(--borda);font-size:12px;color:var(--suave)}
+  .nav-pe b{display:block;color:var(--texto);font-size:13px;font-weight:600;
+            line-height:1.3;margin-bottom:2px}
+  .nav-pe small{display:block;text-transform:capitalize}
+  .nav-pe .pilula{margin-top:8px;display:inline-block}
+
+  header{display:none}
+  #faixaInstalar{grid-column:2;grid-row:1;margin:18px 28px 0}
+  main{grid-column:2;grid-row:2;padding:24px 28px 44px;max-width:1120px}
+  /* a barra do Salvar é fixa acima do rodapé de abas, que no PC não existe.
+     Vira estática no fim do formulário — esconder tiraria o único botão de salvar. */
+  .rodape{position:static;padding:0;background:none;max-width:420px}
+}
 
 .linha{display:flex;gap:10px}
 .linha .campo{flex:1}
@@ -348,10 +416,11 @@ nav button.ativo{color:var(--destaque)}
 <section id="login">
   <div class="marca">
     <svg viewBox="0 0 64 64" aria-hidden="true">
-      <circle cx="32" cy="32" r="30" fill="#16263d" stroke="#f0a63c" stroke-width="3"/>
-      <path d="M20 44V20h11c5.5 0 9 3.3 9 8.3 0 5-3.5 8.4-9 8.4h-5V44z" fill="#f0a63c"/>
-      <circle cx="42" cy="41" r="7.5" fill="none" stroke="#f0a63c" stroke-width="3"/>
-      <path d="M47.5 46.5 54 53" stroke="#f0a63c" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="38" cy="25" r="14" fill="none" stroke="#F5B800" stroke-width="8"/>
+      <rect x="14" y="9" width="9" height="46" rx="2" fill="#FFFFFF"/>
+      <rect x="19" y="36" width="4" height="2.5" fill="#14263F"/>
+      <rect x="19" y="42" width="4" height="2.5" fill="#14263F"/>
+      <rect x="19" y="48" width="4" height="2.5" fill="#14263F"/>
     </svg>
     <div>
       <h1>Peritão</h1>
@@ -381,10 +450,11 @@ nav button.ativo{color:var(--destaque)}
 <section id="app" class="oculto">
   <header>
     <svg viewBox="0 0 64 64" aria-hidden="true">
-      <circle cx="32" cy="32" r="30" fill="#16263d" stroke="#f0a63c" stroke-width="3"/>
-      <path d="M20 44V20h11c5.5 0 9 3.3 9 8.3 0 5-3.5 8.4-9 8.4h-5V44z" fill="#f0a63c"/>
-      <circle cx="42" cy="41" r="7.5" fill="none" stroke="#f0a63c" stroke-width="3"/>
-      <path d="M47.5 46.5 54 53" stroke="#f0a63c" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="38" cy="25" r="14" fill="none" stroke="#F5B800" stroke-width="8"/>
+      <rect x="14" y="9" width="9" height="46" rx="2" fill="#FFFFFF"/>
+      <rect x="19" y="36" width="4" height="2.5" fill="#14263F"/>
+      <rect x="19" y="42" width="4" height="2.5" fill="#14263F"/>
+      <rect x="19" y="48" width="4" height="2.5" fill="#14263F"/>
     </svg>
     <div class="quem"><b id="meuNome">—</b><small id="meuPerfil"></small></div>
     <span class="pilula" id="selo"></span>
@@ -921,11 +991,24 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.40</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.41</p>
     </div>
   </main>
 
   <nav>
+    <div class="nav-marca">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+      <circle cx="38" cy="25" r="14" fill="none" stroke="#F5B800" stroke-width="8"/>
+      <rect x="14" y="9" width="9" height="46" rx="2" fill="#FFFFFF"/>
+      <rect x="19" y="36" width="4" height="2.5" fill="#14263F"/>
+      <rect x="19" y="42" width="4" height="2.5" fill="#14263F"/>
+      <rect x="19" y="48" width="4" height="2.5" fill="#14263F"/>
+    </svg>
+      <div>
+        <b>Peritão</b>
+        <small>1º NRPC Araguatins</small>
+      </div>
+    </div>
     <button data-tela="Nova" class="ativo">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
       Nova
@@ -962,6 +1045,11 @@ nav button.ativo{color:var(--destaque)}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
       Conta
     </button>
+    <div class="nav-pe">
+      <b id="meuNomeLado">—</b>
+      <small id="meuPerfilLado"></small>
+      <span class="pilula" id="seloLado"></span>
+    </div>
   </nav>
 </section>
 
@@ -1020,6 +1108,8 @@ function paraISO(v){ return v ? new Date(v).toISOString() : null; }
 
 function atualizaSelo(){
   const s = $('#selo'), n = fila().length;
+  const lado = $('#seloLado');
+  if(lado) setTimeout(()=>{ lado.textContent = s.textContent; lado.className = s.className; }, 0);
   if(!navigator.onLine){ s.textContent='sem rede'; s.className='pilula off'; }
   else if(n){ s.textContent = n + ' na fila'; s.className='pilula fila'; }
   else { s.textContent='online'; s.className='pilula'; }
@@ -1073,6 +1163,9 @@ async function iniciar(){
 
   $('#meuNome').textContent = eu.nome_completo || eu.nome;
   $('#meuPerfil').textContent = (eu.chefe ? 'Chefe · ' : '') + eu.perfil;
+  /* o pé do menu lateral mostra o mesmo; no celular ele está escondido */
+  $('#meuNomeLado').textContent = eu.nome_completo || eu.nome;
+  $('#meuPerfilLado').textContent = (eu.chefe ? 'Chefe · ' : '') + eu.perfil;
   $('#c_nome').textContent = eu.nome_completo || eu.nome;
   $('#c_perfil').textContent = eu.perfil;
   $('#c_email').textContent = eu.email;
