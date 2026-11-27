@@ -46,6 +46,7 @@ textarea{min-height:84px;resize:vertical}
   color:#17120a;font-weight:700;font-size:17px;cursor:pointer;
 }
 .botao:disabled{opacity:.5}
+.ap-nav{flex:1;min-width:0;padding:12px 4px;font-size:13.5px;white-space:nowrap}
 .botao.secundario{background:transparent;border:1px solid var(--borda);color:var(--texto);font-weight:600}
 /* campo de escolha com filtro por digitação */
 .combo{position:relative}
@@ -761,6 +762,24 @@ nav button.ativo{color:var(--destaque)}
       <h2>Escala de plantão</h2>
       <div class="recado" id="recadoEscala"></div>
 
+      <!-- visão do apoio administrativo: só quem está de plantão num dia -->
+      <div id="escApoio" class="oculto">
+        <div class="cartao">
+          <label class="campo">
+            <span>Dia</span>
+            <input type="date" id="ap_dia">
+          </label>
+          <div class="linha" style="margin-top:4px">
+            <button type="button" class="botao secundario ap-nav" id="ap_antes">‹ Anterior</button>
+            <button type="button" class="botao secundario ap-nav" id="ap_hoje">Hoje</button>
+            <button type="button" class="botao secundario ap-nav" id="ap_depois">Seguinte ›</button>
+          </div>
+        </div>
+        <div id="ap_resposta"></div>
+        <p class="mapa-nota">Escala interna — quem cobre o plantão. Troca e correção se fazem
+          com a chefia.</p>
+      </div>
+
       <div class="mes-nav">
         <button type="button" id="mesAnterior" aria-label="Mês anterior">‹</button>
         <div class="mes-rotulo" id="mesRotulo">—<small id="mesSituacao"></small></div>
@@ -880,7 +899,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.30</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.31</p>
     </div>
   </main>
 
@@ -942,7 +961,7 @@ let eu = null, referencias = { tipos:[], municipios:[], orgaos:[] };
    Enviar assina a ocorrência em nome dele. O RLS já barra escala e afastamento —
    isto aqui é para a tela não oferecer o que o banco vai recusar. */
 const ABAS_POR_PERFIL = {
-  apoio: ['Cartorio','Buscar','Mapa','Oficios','Galileu','Conta']
+  apoio: ['Cartorio','Buscar','Mapa','Escala','Oficios','Galileu','Conta']
 };
 
 function ajustaAbasAoPerfil(){
@@ -958,6 +977,7 @@ function ajustaAbasAoPerfil(){
     const trazer = document.querySelector('[data-sub="Trazer"]');
     if(trazer && !trazer.classList.contains('ativa')) trazer.click();
   }
+  if(eu.perfil === 'apoio') modoEscalaApoio();
   /* a primeira aba visível passa a ser a de entrada */
   const primeira = document.querySelector('nav button[data-tela]:not(.oculto)');
   if(primeira) primeira.click();
@@ -1502,7 +1522,10 @@ document.querySelectorAll('nav button').forEach(b=>{
     if(b.dataset.tela==='Minhas') carregarMinhas();
     if(b.dataset.tela==='Conta') contarTestes();
     if(b.dataset.tela==='Galileu') carregarGalileu();
-    if(b.dataset.tela==='Escala') carregaConfig().then(carregarEscala);
+    if(b.dataset.tela==='Escala'){
+      if(eu.perfil === 'apoio') carregarEscalaApoio();
+      else carregaConfig().then(carregarEscala);
+    }
     if(b.dataset.tela==='Mapa') carregarMapa();
     if(b.dataset.tela==='Oficios') carregarOficios();
     if(b.dataset.tela==='Cartorio') carregarCartorio();
@@ -2978,6 +3001,111 @@ $('#mesSeguinte').onclick = ()=>{
   esc.mes++; if(esc.mes > 12){ esc.mes = 1; esc.ano++; }
   esc.diaAberto = null; carregarEscala();
 };
+
+/* ---------- escala vista pelo apoio administrativo ----------
+   Ele não entra na escala: não vê a grade do mês, não vê a oficial (que carrega as
+   férias e o que se declara) e não vê afastamento de ninguém. Vê uma pergunta só —
+   quem está de plantão no dia tal — respondida pela interna, que é quem de fato
+   cobre. O RLS garante o resto: para o perfil apoio o banco só devolve escala
+   interna e os plantões dela. */
+const apo = { dia:null };
+
+function modoEscalaApoio(){
+  $('#escApoio').classList.remove('oculto');
+  ['.mes-nav', '.abas', '#escInterna'].forEach(sel=>{
+    const el = document.querySelector(sel);
+    if(el) el.classList.add('oculto');
+  });
+  const t = document.querySelector('#telaEscala h2');
+  if(t) t.textContent = 'Quem está de plantão';
+}
+
+function diaISO(d){
+  return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+}
+
+async function carregarEscalaApoio(){
+  recado('#recadoEscala','');
+  if(!apo.dia) apo.dia = diaISO(new Date());
+  $('#ap_dia').value = apo.dia;
+  await mostraPlantao();
+}
+
+function mexeDia(passos){
+  const [a,m,d] = apo.dia.split('-').map(Number);
+  const nova = new Date(a, m-1, d + passos);
+  apo.dia = diaISO(nova);
+  $('#ap_dia').value = apo.dia;
+  mostraPlantao();
+}
+
+async function mostraPlantao(){
+  const alvo = $('#ap_resposta');
+  if(!apo.dia) return;
+  if(!navigator.onLine){
+    alvo.innerHTML = '<div class="vazio">A consulta precisa de conexão.</div>';
+    return;
+  }
+  const [ano, mes, dia] = apo.dia.split('-').map(Number);
+  alvo.innerHTML = '<div class="carregando">Carregando…</div>';
+
+  const { data: escala, error } = await sb.from('escalas')
+    .select('id,publicada_em').eq('ano', ano).eq('mes', mes).eq('tipo', 'interna').maybeSingle();
+  if(error){
+    recado('#recadoEscala', 'Não deu para ler a escala: ' + error.message);
+    alvo.innerHTML = '';
+    return;
+  }
+  if(!escala){
+    alvo.innerHTML = '<div class="vazio">A escala interna de ' + MESES[mes-1] + ' de ' + ano +
+      ' ainda não foi lançada.</div>';
+    return;
+  }
+
+  const { data: plantoes, error: e2 } = await sb.from('escala_plantoes')
+    .select('turno,peritos(nome)').eq('escala_id', escala.id).eq('dia', dia);
+  if(e2){
+    recado('#recadoEscala', 'Não deu para ler o plantão: ' + e2.message);
+    alvo.innerHTML = '';
+    return;
+  }
+
+  const lista = plantoes || [];
+  if(!lista.length){
+    alvo.innerHTML = '<div class="item pendente"><h3>Dia sem cobertura lançada</h3>' +
+      '<div class="meta"><span>' + escapar(porExtenso(ano, mes, dia)) + '</span></div></div>';
+    return;
+  }
+
+  /* o diurno antes do noturno, e o de 24h na frente dos dois */
+  const ordem = { '24h':0, '12h':1, '12h_noturno':2 };
+  lista.sort((x,y)=> (ordem[x.turno] ?? 9) - (ordem[y.turno] ?? 9));
+
+  alvo.innerHTML = '<div class="cartao" style="margin-bottom:10px;font-size:13px;color:var(--suave)">'
+    + escapar(porExtenso(ano, mes, dia)) + '</div>'
+    + lista.map(p=>{
+        const t = TURNOS[p.turno] || { curto:p.turno, faixa:'' };
+        return '<div class="item concluida"><h3>' + escapar(p.peritos ? p.peritos.nome : '—') + '</h3>'
+          + '<div class="meta"><span>' + escapar(t.curto) + '</span>'
+          + (t.faixa ? '<span>' + escapar(t.faixa) + '</span>' : '') + '</div></div>';
+      }).join('');
+}
+
+function porExtenso(ano, mes, dia){
+  const d = new Date(ano, mes-1, dia);
+  const semana = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira',
+                  'sexta-feira','sábado'][d.getDay()];
+  return semana + ', ' + dia + ' de ' + MESES[mes-1] + ' de ' + ano;
+}
+
+$('#ap_dia').addEventListener('change', e=>{
+  if(!e.target.value) return;
+  apo.dia = e.target.value;
+  mostraPlantao();
+});
+$('#ap_antes').onclick  = ()=> mexeDia(-1);
+$('#ap_depois').onclick = ()=> mexeDia(1);
+$('#ap_hoje').onclick   = ()=>{ apo.dia = diaISO(new Date()); $('#ap_dia').value = apo.dia; mostraPlantao(); };
 
 document.querySelectorAll('[data-esc]').forEach(b=>{
   b.onclick = ()=>{
