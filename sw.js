@@ -2,8 +2,8 @@
 // Guarda a casca do app para abrir sem rede. Dados nunca são cacheados:
 // as chamadas ao Supabase passam direto e, se falharem, o app põe na fila local.
 
-const CACHE = 'peritao-v16';
-const CASCA = ['index.html', 'manifest.json', 'icon-192.png', 'icon-512.png'];
+const CACHE = 'peritao-v17';
+const CASCA = ['index.html', 'mapa-bico.js', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -30,6 +30,7 @@ self.addEventListener('fetch', e => {
   // Tudo que for API, auth ou storage do Supabase vai direto para a rede.
   if (url.pathname.includes('/rest/v1/') ||
       url.pathname.includes('/auth/v1/') ||
+      url.pathname.includes('/storage/v1/') ||
       url.pathname.includes('/realtime/')) return;
 
   // Casca: rede primeiro, cache como rede de segurança.

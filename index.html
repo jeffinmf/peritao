@@ -172,6 +172,44 @@ nav button.ativo{color:var(--destaque)}
 .estat b{display:block;font-size:25px;line-height:1.15}
 .estat small{color:var(--suave);font-size:12px}
 
+/* ---------- mapa do crime ---------- */
+.sub{margin:-8px 0 14px;font-size:13px;color:var(--suave)}
+.numeros{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:14px}
+.numero{background:var(--cartao);border:1px solid var(--borda);border-radius:14px;padding:13px 14px}
+.numero b{display:block;font-size:26px;line-height:1.1;font-variant-numeric:tabular-nums}
+.numero small{display:block;font-size:11.5px;color:var(--suave);margin-top:3px;line-height:1.3}
+
+.mapa-cartao{padding:12px}
+.mapa-rolo{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.mapa-rolo svg{display:block;width:100%;height:auto;min-width:300px}
+.mapa-rolo .mun{stroke:#2c4263;stroke-width:2;transition:fill .15s}
+.mapa-rolo .mun.fora{fill:#141e2b;stroke:#1e2b3d}
+.mapa-rolo .rot{font-size:17px;fill:#cfdaea;text-anchor:middle;paint-order:stroke;
+  stroke:#0f1b2d;stroke-width:4px;stroke-linejoin:round}
+.mapa-rolo .rot .n{font-weight:700;fill:#fff}
+.mapa-rolo .pino{fill:var(--destaque);stroke:#0f1b2d;stroke-width:2}
+
+.mapa-legenda{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:11px;font-size:12px}
+.mapa-legenda span{display:inline-flex;align-items:center;gap:6px;color:var(--suave)}
+.mapa-legenda i{width:13px;height:13px;border-radius:3px;display:inline-block}
+.mapa-nota{margin-top:10px;font-size:11.5px;color:var(--suave);line-height:1.5}
+
+.tit-tabela{margin:0 0 11px;font-size:15px;font-weight:600}
+.tabela-rolo{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tab{width:100%;border-collapse:collapse;font-size:13px;min-width:330px}
+.tab th,.tab td{padding:7px 8px;text-align:left;border-bottom:1px solid var(--borda)}
+.tab th{font-size:11px;font-weight:600;color:var(--suave);text-transform:uppercase;letter-spacing:.3px}
+.tab td.num,.tab th.num{text-align:right;font-variant-numeric:tabular-nums}
+.tab tr:last-child td{border-bottom:0}
+
+.barras{display:flex;flex-direction:column;gap:9px}
+.barra{display:flex;flex-direction:column;gap:4px}
+.barra .topo{display:flex;justify-content:space-between;gap:10px;font-size:13px}
+.barra .topo span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.barra .topo b{flex:none;font-weight:600;font-variant-numeric:tabular-nums}
+.barra .trilho{height:7px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden}
+.barra .trilho i{display:block;height:100%;border-radius:4px;background:var(--destaque)}
+
 /* ---------- faixa de instalação ---------- */
 .instalar{display:flex;align-items:center;gap:11px;margin:0 14px 12px;padding:11px 13px;
   border-radius:14px;background:var(--cartao);border:1px solid rgba(240,166,60,.45)}
@@ -538,6 +576,47 @@ nav button.ativo{color:var(--destaque)}
       </div>
     </div>
 
+    <!-- ---- mapa do crime ---- -->
+    <div id="telaMapa" class="oculto">
+      <h2>Mapa do crime</h2>
+      <p class="sub">Bico do Papagaio · locais periciados e estatísticas do núcleo</p>
+      <div class="recado" id="recadoMapa"></div>
+
+      <div class="cartao">
+        <label class="campo">
+          <span>Período</span>
+          <select id="m_periodo"></select>
+        </label>
+        <label class="campo">
+          <span>Tipo de perícia</span>
+          <select id="m_tipo"></select>
+        </label>
+      </div>
+
+      <div class="numeros" id="mapaNumeros"></div>
+
+      <div class="cartao mapa-cartao">
+        <div class="mapa-rolo"><div id="mapaDesenho"></div></div>
+        <div id="mapaLegenda" class="mapa-legenda"></div>
+        <div class="mapa-nota" id="mapaNota"></div>
+      </div>
+
+      <div class="cartao">
+        <h3 class="tit-tabela">Por perito</h3>
+        <div class="tabela-rolo"><table class="tab" id="tabPeritos"></table></div>
+      </div>
+
+      <div class="cartao">
+        <h3 class="tit-tabela">Por tipo de perícia</h3>
+        <div id="tabTipos" class="barras"></div>
+      </div>
+
+      <div class="cartao">
+        <h3 class="tit-tabela">Por município</h3>
+        <div id="tabMunicipios" class="barras"></div>
+      </div>
+    </div>
+
     <!-- ---- escala ---- -->
     <div id="telaEscala" class="oculto">
       <h2>Escala de plantão</h2>
@@ -662,7 +741,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.15</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.16</p>
     </div>
   </main>
 
@@ -678,6 +757,10 @@ nav button.ativo{color:var(--destaque)}
     <button data-tela="Buscar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
       Buscar
+    </button>
+    <button data-tela="Mapa">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>
+      Mapa
     </button>
     <button data-tela="Escala">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
@@ -695,6 +778,7 @@ nav button.ativo{color:var(--destaque)}
 </section>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="mapa-bico.js"></script>
 <script>
 const URL_SUPABASE = 'https://feqpfvyczjscxdsdmyqy.supabase.co';
 const CHAVE = 'sb_publishable_iqQEH1Q-iSFKn7nmDoFlSg_6nFqA2Xc';
@@ -1232,13 +1316,14 @@ document.querySelectorAll('nav button').forEach(b=>{
   b.onclick = ()=>{
     document.querySelectorAll('nav button').forEach(x=>x.classList.remove('ativo'));
     b.classList.add('ativo');
-    ['Nova','Minhas','Buscar','Escala','Galileu','Conta'].forEach(t=>
+    ['Nova','Minhas','Buscar','Mapa','Escala','Galileu','Conta'].forEach(t=>
       $('#tela'+t).classList.toggle('oculto', t!==b.dataset.tela));
     $('.rodape').classList.toggle('oculto', b.dataset.tela!=='Nova');
     if(b.dataset.tela==='Minhas') carregarMinhas();
     if(b.dataset.tela==='Conta') contarTestes();
     if(b.dataset.tela==='Galileu') carregarGalileu();
     if(b.dataset.tela==='Escala') carregaConfig().then(carregarEscala);
+    if(b.dataset.tela==='Mapa') carregarMapa();
     window.scrollTo(0,0);
   };
 });
@@ -1613,6 +1698,233 @@ $('#btnAplicarSync').onclick = async ()=>{
   recado('#recadoSync', resumo, erros ? 'aviso' : 'ok');
   carregarGalileu();
 };
+
+/* ================= MAPA DO CRIME =================
+   Só entram as perícias de local. Exame de laboratório é da Seção
+   Especializada e não é trabalho de campo deste núcleo. */
+
+const mapa = { ano:'todos', tipo:'', dados:null, municipios:[], peritos:[] };
+
+function escalaCor(n, maior){
+  if(!n) return '#16263d';
+  const t = Math.sqrt(n / maior);                 /* raiz, senão Araguatins achata o resto */
+  const a = [ 28, 48, 73], b = [240,166, 60];
+  const c = a.map((v,i)=>Math.round(v + (b[i]-v)*t));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+
+async function carregarMapa(){
+  recado('#recadoMapa','');
+  if(!navigator.onLine){
+    $('#mapaDesenho').innerHTML = '<div class="vazio">O mapa precisa de conexão.</div>';
+    return;
+  }
+  if(typeof MAPA_BICO === 'undefined'){
+    $('#mapaDesenho').innerHTML = '<div class="vazio">A malha do mapa não carregou. Recarregue o app.</div>';
+    return;
+  }
+
+  if(!mapa.dados){
+    $('#mapaDesenho').innerHTML = '<div class="carregando">Carregando…</div>';
+
+    const { data: mun } = await sb.from('municipios').select('id,nome,uf,atendido,ativo');
+    mapa.municipios = mun || [];
+    const { data: per } = await sb.from('peritos').select('id,nome').order('nome');
+    mapa.peritos = per || [];
+    const { data: tip } = await sb.from('tipos_exame')
+      .select('id,nome').eq('grupo','local').order('nome');
+    mapa.tipos = tip || [];
+    const tiposLocal = new Set(mapa.tipos.map(t=>t.id));
+
+    /* a base passa de 6 mil linhas: puxo em páginas, só as colunas que o mapa usa */
+    const linhas = [];
+    const passo = 1000;
+    for(let de = 0; ; de += passo){
+      const { data, error } = await sb.from('ocorrencias')
+        .select('id,ano,municipio_id,perito_id,tipo_exame_id,latitude,longitude,origem')
+        .is('excluido_em',null).eq('teste',false)
+        .order('id').range(de, de + passo - 1);
+      if(error){ recado('#recadoMapa','Não deu para ler as ocorrências: '+error.message); return; }
+      linhas.push(...data);
+      if(data.length < passo) break;
+      if(de > 20000) break;
+    }
+
+    const ids = linhas.map(l=>l.id);
+    const comLaudo = new Set();
+    for(let i=0; i<ids.length; i+=500){
+      const { data } = await sb.from('laudos').select('ocorrencia_id')
+        .in('ocorrencia_id', ids.slice(i, i+500)).eq('entregue', true);
+      (data||[]).forEach(l=>comLaudo.add(l.ocorrencia_id));
+    }
+
+    mapa.dados = linhas.map(l=>({ ...l, deLocal: tiposLocal.has(l.tipo_exame_id), laudoOk: comLaudo.has(l.id) }));
+    montaFiltrosMapa();
+  }
+
+  desenhaMapa();
+}
+
+function montaFiltrosMapa(){
+  const anos = [...new Set(mapa.dados.map(d=>d.ano).filter(Boolean))].sort((a,b)=>b-a);
+  $('#m_periodo').innerHTML = `<option value="todos">${anos[anos.length-1]} a ${anos[0]} · tudo</option>`
+    + anos.map(a=>`<option value="${a}">${a}</option>`).join('');
+  $('#m_periodo').value = mapa.ano;
+
+  $('#m_tipo').innerHTML = '<option value="">Todos os tipos de local</option>'
+    + mapa.tipos.map(t=>`<option value="${t.id}">${escapar(t.nome)}</option>`).join('');
+  $('#m_tipo').value = mapa.tipo;
+  montaCombo('m_tipo','Digite parte do exame — ex.: acid, furto');
+  defineCombo('m_tipo', mapa.tipo);
+}
+
+function filtradas(){
+  return mapa.dados.filter(d=>
+    d.deLocal &&
+    (mapa.ano === 'todos' || d.ano === Number(mapa.ano)) &&
+    (!mapa.tipo || d.tipo_exame_id === Number(mapa.tipo))
+  );
+}
+
+function desenhaMapa(){
+  const linhas = filtradas();
+  const nomeMun = {}; mapa.municipios.forEach(m=>{ nomeMun[m.id] = m.nome; });
+  const nomePer = {}; mapa.peritos.forEach(p=>{ nomePer[p.id] = p.nome; });
+
+  const porMun = {}, porPerito = {}, porTipo = {};
+  let semMunicipio = 0, laudosOk = 0;
+  linhas.forEach(d=>{
+    if(d.municipio_id) porMun[d.municipio_id] = (porMun[d.municipio_id]||0) + 1;
+    else semMunicipio++;
+    if(d.laudoOk) laudosOk++;
+    const p = d.perito_id || 0;
+    porPerito[p] = porPerito[p] || { total:0, ok:0 };
+    porPerito[p].total++; if(d.laudoOk) porPerito[p].ok++;
+    if(d.tipo_exame_id) porTipo[d.tipo_exame_id] = (porTipo[d.tipo_exame_id]||0) + 1;
+  });
+
+  /* ----- números ----- */
+  const rotuloAno = mapa.ano === 'todos' ? 'no período' : 'em ' + mapa.ano;
+  $('#mapaNumeros').innerHTML = [
+    [linhas.length, 'Perícias de local ' + rotuloAno],
+    [laudosOk, 'Laudos entregues'],
+    [linhas.length - laudosOk, 'Laudos pendentes'],
+    [Object.keys(porMun).length, 'Municípios atendidos']
+  ].map(([n,r])=>`<div class="numero"><b>${n.toLocaleString('pt-BR')}</b><small>${r}</small></div>`).join('');
+
+  /* ----- desenho ----- */
+  const porNome = {};
+  Object.keys(porMun).forEach(id=>{
+    const n = nomeMun[id]; if(n) porNome[chaveMun(n)] = porMun[id];
+  });
+  const maior = Math.max(1, ...Object.values(porNome));
+
+  const comPino = linhas.filter(d=>d.latitude && d.longitude);
+  const pinos = comPino.map(d=>{
+    const p = projetaNoMapa(d.latitude, d.longitude);
+    return p ? `<circle class="pino" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="7"><title>${escapar(nomePer[d.perito_id]||'perito não informado')}</title></circle>` : '';
+  }).join('');
+
+  const formas = MAPA_BICO.mun.map(m=>{
+    const n = porNome[chaveMun(m.n)] || 0;
+    const atendido = chaveMun(m.n) in porNome || municipioAtendido(m.n);
+    const cor = atendido ? escalaCor(n, maior) : '#141e2b';
+    return `<path class="mun${atendido?'':' fora'}" d="${m.d}" fill="${cor}"
+      ><title>${escapar(m.n)}${atendido ? ' · ' + n + (n===1?' perícia':' perícias') : ' · outro núcleo'}</title></path>`;
+  }).join('');
+
+  const rotulos = MAPA_BICO.mun.map(m=>{
+    const n = porNome[chaveMun(m.n)] || 0;
+    if(!n) return '';
+    const c = centroDoMunicipio(m.d);
+    const curto = m.n.replace(/ do Tocantins$/,'').replace(/^São /,'S. ');
+    return `<text class="rot" x="${c.x.toFixed(0)}" y="${c.y.toFixed(0)}">${escapar(curto)}
+      <tspan class="n" x="${c.x.toFixed(0)}" dy="19">${n}</tspan></text>`;
+  }).join('');
+
+  $('#mapaDesenho').innerHTML =
+    `<svg viewBox="${MAPA_BICO.vb}" role="img" aria-label="Mapa do Bico do Papagaio com as perícias por município">
+       ${formas}${pinos}${rotulos}</svg>`;
+
+  $('#mapaLegenda').innerHTML =
+    `<span><i style="background:${escalaCor(maior,maior)}"></i>mais perícias</span>` +
+    `<span><i style="background:${escalaCor(1,maior)}"></i>menos</span>` +
+    `<span><i style="background:#141e2b;border:1px solid #2c4263"></i>outro núcleo</span>` +
+    (comPino.length ? `<span><i style="background:var(--destaque);border-radius:50%"></i>ponto de GPS (${comPino.length})</span>` : '');
+
+  $('#mapaNota').innerHTML =
+    'A cor mostra quantas perícias de local houve em cada município. Exame de laboratório não entra: é da Seção Especializada.<br>'
+    + 'Alfinete só onde existe coordenada registrada no campo — nada é espalhado por dentro do município, para não inventar lugar.'
+    + (semMunicipio ? `<br><b style="color:var(--alerta)">${semMunicipio} ${semMunicipio===1?'perícia ficou de fora':'perícias ficaram de fora'} por não ter município.</b>` : '');
+
+  /* ----- por perito ----- */
+  const peritos = Object.keys(porPerito).map(id=>{
+    const x = porPerito[id];
+    return { nome: nomePer[id] || 'não informado', total:x.total, ok:x.ok,
+             pend:x.total - x.ok, pct: Math.round(x.ok / x.total * 100) };
+  }).sort((a,b)=>b.total-a.total);
+
+  $('#tabPeritos').innerHTML =
+    '<thead><tr><th>Perito</th><th class="num">Perícias</th><th class="num">Entregues</th>'
+    + '<th class="num">Pendentes</th><th class="num">%</th></tr></thead><tbody>'
+    + peritos.map(p=>`<tr><td>${escapar(p.nome)}</td><td class="num">${p.total}</td>`
+      + `<td class="num">${p.ok}</td><td class="num">${p.pend}</td><td class="num">${p.pct}%</td></tr>`).join('')
+    + '</tbody>';
+
+  /* ----- por tipo e por município ----- */
+  const nomeTipo = {}; mapa.tipos.forEach(t=>{ nomeTipo[t.id] = t.nome; });
+  desenhaBarras('#tabTipos', Object.keys(porTipo)
+    .map(id=>({ nome: nomeTipo[id] || 'não informado', n: porTipo[id] })), 12);
+  desenhaBarras('#tabMunicipios', Object.keys(porMun)
+    .map(id=>({ nome: nomeMun[id] || 'não informado', n: porMun[id] })), 20);
+}
+
+function desenhaBarras(alvo, lista, limite){
+  const ordenada = lista.sort((a,b)=>b.n-a.n);
+  const mostra = ordenada.slice(0, limite);
+  const maior = Math.max(1, ...mostra.map(x=>x.n));
+  const resto = ordenada.length - mostra.length;
+  $(alvo).innerHTML = (mostra.length
+    ? mostra.map(x=>`<div class="barra">
+        <div class="topo"><span title="${escapar(x.nome)}">${escapar(x.nome)}</span><b>${x.n}</b></div>
+        <div class="trilho"><i style="width:${Math.round(x.n/maior*100)}%"></i></div>
+      </div>`).join('')
+    : '<div style="font-size:13px;color:var(--suave)">Nada no período.</div>')
+    + (resto > 0 ? `<div style="font-size:11.5px;color:var(--suave);margin-top:3px">e mais ${resto}</div>` : '');
+}
+
+/* --- apoio do desenho --- */
+function chaveMun(nome){
+  return String(nome||'').normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .toLowerCase().replace(/\s*\(\w+\)\s*$/,'').trim();
+}
+function municipioAtendido(nomeMalha){
+  const k = chaveMun(nomeMalha);
+  return mapa.municipios.some(m=>chaveMun(m.nome) === k && m.ativo);
+}
+
+/* Os mesmos números usados ao gerar a malha. Se a malha for refeita,
+   estes têm de ser refeitos junto, senão o alfinete cai no lugar errado. */
+const PROJ = { lon0:-48.7563305121, lat1:-5.1679984383,
+               lon1:-47.3768113166, lat0:-7.006322635,
+               k:0.994361731979211, esc:729.0005399162382 };
+function projetaNoMapa(lat, lon){
+  /* só vale dentro do Bico; fora disso não há onde pôr o alfinete */
+  if(lat < PROJ.lat0 || lat > PROJ.lat1 || lon < PROJ.lon0 || lon > PROJ.lon1) return null;
+  return { x: (lon - PROJ.lon0) * PROJ.k * PROJ.esc,
+           y: (PROJ.lat1 - lat) * PROJ.esc };
+}
+const _centros = {};
+function centroDoMunicipio(d){
+  if(_centros[d]) return _centros[d];
+  const nums = d.match(/-?\d+(\.\d+)?/g) || [];
+  let sx=0, sy=0, n=0;
+  for(let i=0; i+1<nums.length; i+=2){ sx += +nums[i]; sy += +nums[i+1]; n++; }
+  return (_centros[d] = n ? { x:sx/n, y:sy/n } : { x:0, y:0 });
+}
+
+$('#m_periodo').onchange = ()=>{ mapa.ano = $('#m_periodo').value; desenhaMapa(); };
+$('#m_tipo').onchange = ()=>{ mapa.tipo = $('#m_tipo').value; desenhaMapa(); };
 
 /* ---------- instalar no celular ----------
    O Chrome e o Edge avisam por beforeinstallprompt e deixam instalar com um toque.
