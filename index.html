@@ -832,7 +832,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.23</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.24</p>
     </div>
   </main>
 
@@ -884,6 +884,32 @@ const sb = supabase.createClient(URL_SUPABASE, CHAVE, {
 const $ = s => document.querySelector(s);
 const CHAVE_FILA = 'peritao-fila';
 let eu = null, referencias = { tipos:[], municipios:[], orgaos:[] };
+
+/* O apoio administrativo trabalha o Entrada de Cartório e os ofícios, não lança
+   perícia em campo nem vê escala. Nova e Minhas são o registro do próprio perito;
+   Enviar assina a ocorrência em nome dele. O RLS já barra escala e afastamento —
+   isto aqui é para a tela não oferecer o que o banco vai recusar. */
+const ABAS_POR_PERFIL = {
+  apoio: ['Buscar','Mapa','Oficios','Galileu','Conta']
+};
+
+function ajustaAbasAoPerfil(){
+  const permitidas = ABAS_POR_PERFIL[eu.perfil];
+  if(!permitidas) return;                       /* administrador e perito veem tudo */
+  document.querySelectorAll('nav button[data-tela]').forEach(b=>{
+    b.classList.toggle('oculto', !permitidas.includes(b.dataset.tela));
+  });
+  /* no Galileu, só Trazer: Enviar empurra ocorrência em nome de um perito */
+  const enviar = document.querySelector('[data-sub="Enviar"]');
+  if(enviar){
+    enviar.classList.add('oculto');
+    const trazer = document.querySelector('[data-sub="Trazer"]');
+    if(trazer && !trazer.classList.contains('ativa')) trazer.click();
+  }
+  /* a primeira aba visível passa a ser a de entrada */
+  const primeira = document.querySelector('nav button[data-tela]:not(.oculto)');
+  if(primeira) primeira.click();
+}
 
 /* ---------- utilidades ---------- */
 function recado(el, texto, tipo){
@@ -965,6 +991,9 @@ async function iniciar(){
   atualizaSelo();
   enviarFila();
   carregarMinhas();
+
+  /* por último: só depois das referências, porque troca de aba e a aba carrega dados */
+  ajustaAbasAoPerfil();
 }
 
 async function carregaReferencias(){
