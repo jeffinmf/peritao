@@ -899,7 +899,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.32</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.33</p>
     </div>
   </main>
 
@@ -3040,6 +3040,15 @@ function mexeDia(passos){
 }
 
 async function mostraPlantao(){
+  try{ await buscaPlantao(); }
+  catch(e){
+    /* sem isto a tela fica em "Carregando…" e o erro só aparece no console */
+    recado('#recadoEscala', 'Não deu para consultar: ' + (e && e.message ? e.message : e));
+    $('#ap_resposta').innerHTML = '<div class="vazio">Consulta interrompida.</div>';
+  }
+}
+
+async function buscaPlantao(){
   const alvo = $('#ap_resposta');
   if(!apo.dia) return;
   if(!navigator.onLine){
@@ -3092,10 +3101,10 @@ async function mostraPlantao(){
 }
 
 function porExtenso(ano, mes, diaN){
-  const d = new Date(ano, mes-1, dia);
+  const d = new Date(ano, mes-1, diaN);
   const semana = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira',
                   'sexta-feira','sábado'][d.getDay()];
-  return semana + ', ' + dia + ' de ' + MESES[mes-1] + ' de ' + ano;
+  return semana + ', ' + diaN + ' de ' + MESES[mes-1] + ' de ' + ano;
 }
 
 $('#ap_dia').addEventListener('change', e=>{
