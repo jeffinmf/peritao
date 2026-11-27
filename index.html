@@ -163,9 +163,6 @@ nav button.ativo{color:var(--destaque)}
 .item.a_receber{border-left-color:var(--suave)}
 .item.pendente{border-left-color:var(--alerta);border-style:dashed}
 .item.sem-laudo{border-left-color:var(--alerta)}
-.selo-rever{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;
-  font-size:10.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;
-  background:rgba(232,184,75,.16);color:#f6e2b0;border:1px solid var(--alerta);vertical-align:middle}
 .item h3{margin:0 0 4px;font-size:15px;font-weight:600;line-height:1.3}
 .item .meta{font-size:12.5px;color:var(--suave);display:flex;flex-wrap:wrap;gap:4px 10px}
 .vazio{text-align:center;color:var(--suave);padding:44px 18px;font-size:14px}
@@ -576,7 +573,7 @@ nav button.ativo{color:var(--destaque)}
           <label class="campo">
             <span>Laudo</span>
             <select id="c_laudo">
-              <option value="">Qualquer situação</option>
+              <option value="">Todos</option>
               <option value="ok">Entregue</option>
               <option value="pend">Pendente</option>
             </select>
@@ -593,6 +590,10 @@ nav button.ativo{color:var(--destaque)}
         <label class="campo">
           <span>Tipo de exame</span>
           <select id="c_tipo"></select>
+        </label>
+        <label class="troca" id="c_linhaRever">
+          <input type="checkbox" id="c_rever">
+          <span style="font-size:13.5px">Só as que faltam completar (local, horários, município)</span>
         </label>
         <button type="button" class="botao secundario" id="c_limpar" style="margin-top:4px">Limpar filtros</button>
       </div>
@@ -883,7 +884,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.25</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.26</p>
     </div>
   </main>
 
@@ -2142,7 +2143,7 @@ function escalaCor(n, maior){
    poucas colunas, e assim os filtros respondem na hora e as contas saem certas. */
 const CART_PAGINA = 60;
 const cart = { dados:null, tipos:[], municipios:[], peritos:[], mapaTipo:{}, mapaMun:{}, mapaPer:{},
-               ano:'todos', perito:'', municipio:'', tipo:'', laudo:'', termo:'',
+               ano:'todos', perito:'', municipio:'', tipo:'', laudo:'', termo:'', rever:false,
                mostrando:CART_PAGINA };
 
 async function carregarCartorio(){
@@ -2249,6 +2250,7 @@ function filtradasCartorio(){
     const entregue = !!(d.laudo && d.laudo.entregue);
     if(cart.laudo === 'ok' && !entregue) return false;
     if(cart.laudo === 'pend' && entregue) return false;
+    if(cart.rever && !d.revisar) return false;
     if(termo){
       const alvo = semAcento([d.protocolo, d.caso, d.bo, d.nome_vitima, d.local_bruto,
                               d.laudo && d.laudo.numero, d.laudo && d.laudo.sgd].filter(Boolean).join(' '));
@@ -2271,9 +2273,8 @@ function cartaoCartorio(d){
   const per = cart.mapaPer[d.perito_id];
   if(per) partes.push(primeiroNome(per));
   partes.push(entregue ? 'laudo ' + (d.laudo.numero || 'entregue') : 'laudo pendente');
-  const marca = d.revisar ? '<span class="selo-rever">a revisar</span>' : '';
   return `<div class="item ${entregue?'concluida':'sem-laudo'}">
-    <h3>${escapar(tipo)}${marca}</h3>
+    <h3>${escapar(tipo)}</h3>
     <div class="meta">${partes.map(p=>`<span>${escapar(p)}</span>`).join('')}</div>
   </div>`;
 }
@@ -2292,7 +2293,7 @@ function desenhaCartorio(){
     [lista.length, 'Ocorrências no filtro'],
     [entregues, 'Com laudo entregue'],
     [lista.length - entregues, 'Laudo pendente'],
-    [rever, 'A revisar']
+    [rever, 'Falta completar']
   ].map(([n,r])=>`<div class="numero"><b>${n.toLocaleString('pt-BR')}</b><small>${r}</small></div>`).join('');
 
   const alvo = $('#listaCartorio');
@@ -2326,11 +2327,18 @@ function filtroCartorio(id, campo){
 ['c_ano|ano','c_laudo|laudo','c_perito|perito','c_municipio|municipio','c_tipo|tipo','c_termo|termo']
   .forEach(par=>{ const [id, campo] = par.split('|'); filtroCartorio(id, campo); });
 
+$('#c_rever').addEventListener('change', e=>{
+  cart.rever = e.target.checked;
+  cart.mostrando = CART_PAGINA;
+  if(cart.dados) desenhaCartorio();
+});
+
 $('#c_mais').onclick = ()=>{ cart.mostrando += CART_PAGINA; desenhaCartorio(); };
 $('#c_limpar').onclick = ()=>{
-  Object.assign(cart, { ano:'todos', perito:'', municipio:'', tipo:'', laudo:'', termo:'', mostrando:CART_PAGINA });
+  Object.assign(cart, { ano:'todos', perito:'', municipio:'', tipo:'', laudo:'', termo:'',
+                        rever:false, mostrando:CART_PAGINA });
   $('#c_ano').value = 'todos'; $('#c_laudo').value = '';
-  $('#c_termo').value = '';
+  $('#c_termo').value = ''; $('#c_rever').checked = false;
   defineCombo('c_perito',''); defineCombo('c_municipio',''); defineCombo('c_tipo','');
   if(cart.dados) desenhaCartorio();
 };
