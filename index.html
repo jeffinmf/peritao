@@ -591,6 +591,10 @@ nav button.ativo{color:var(--destaque)}
           <span>Tipo de perícia</span>
           <select id="m_tipo"></select>
         </label>
+        <label class="troca" id="linhaEstimados">
+          <input type="checkbox" id="m_estimados" checked>
+          <span style="font-size:13.5px">Incluir município estimado pelo órgão requisitante</span>
+        </label>
       </div>
 
       <div class="numeros" id="mapaNumeros"></div>
@@ -741,7 +745,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.17</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.18</p>
     </div>
   </main>
 
@@ -873,12 +877,16 @@ async function iniciar(){
 }
 
 async function carregaReferencias(){
-  const [t,m,o] = await Promise.all([
+  /* municipiosTodos inclui os desativados — o órgão de Itaguatins ainda precisa
+     achar Itaguatins quando o Trazer deduz o município pelo requisitante. */
+  const [t,m,o,mt] = await Promise.all([
     sb.from('tipos_exame').select('id,nome').eq('ativo',true).order('nome'),
     sb.from('municipios').select('id,nome').eq('ativo',true).order('nome'),
-    sb.from('orgaos').select('id,sigla,nome,tipo').eq('ativo',true).order('nome')
+    sb.from('orgaos').select('id,sigla,nome,tipo,nome_galileu').eq('ativo',true).order('nome'),
+    sb.from('municipios').select('id,nome').order('nome')
   ]);
-  referencias = { tipos:t.data||[], municipios:m.data||[], orgaos:o.data||[] };
+  referencias = { tipos:t.data||[], municipios:m.data||[], orgaos:o.data||[],
+                  municipiosTodos:mt.data||[] };
   try{ localStorage.setItem('peritao-ref', JSON.stringify(referencias)); }catch(e){}
   if(!referencias.tipos.length){
     try{ referencias = JSON.parse(localStorage.getItem('peritao-ref')) || referencias; }catch(e){}
@@ -1575,6 +1583,35 @@ async function carregaPeritos(){
   return peritosCache;
 }
 
+/* De "13ª DP - 13ª Delegacia de Polícia - Augustinópolis" tira o órgão e o município.
+   O município pode estar em qualquer trecho, não só no último: o 9º BPM vem como
+   "9º BPM - Araguatins - 9° Batalhão de Polícia Militar". Por isso varre todos.
+   Órgão que não fica em município do Bico — PRF, TJTO, Corpo de Bombeiros, DEIC de
+   Palmas — devolve município nenhum, e é assim mesmo: dali não dá para saber o lugar. */
+function ondeFica(unidade){
+  const vazio = { orgao_id:null, municipio_id:null, municipio_nome:null };
+  if(!unidade) return vazio;
+  const chave = s => String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .toLowerCase().replace(/\s*\(\w+\)\s*$/,'').replace(/\s+/g,' ').trim();
+
+  const alvo = chave(unidade);
+  const org = (referencias.orgaos || []).find(o=>{
+    if(o.nome_galileu && chave(o.nome_galileu) === alvo) return true;
+    /* no Galileu a célula às vezes traz só o nome, sem a sigla */
+    return chave(o.nome) === alvo;
+  }) || (referencias.orgaos || []).find(o=>
+    o.nome_galileu && chave(o.nome_galileu).includes(alvo) && alvo.length > 8);
+  if(!org) return vazio;
+
+  const texto = org.nome_galileu || org.nome || '';
+  for(const trecho of texto.split(' - ')){
+    const lista = referencias.municipiosTodos || referencias.municipios || [];
+    const m = lista.find(x=>chave(x.nome) === chave(trecho));
+    if(m) return { orgao_id: org.id, municipio_id: m.id, municipio_nome: m.nome };
+  }
+  return { orgao_id: org.id, municipio_id:null, municipio_nome:null };
+}
+
 /* O exame definitivo de drogas é feito pelo núcleo especializado de Palmas.
    Ele aparece no Entrada de Cartório, mas não é trabalho deste núcleo e não pode
    entrar na estatística daqui. */
@@ -1596,7 +1633,9 @@ $('#btnAplicarSync').onclick = async ()=>{
 
   for(const linha of linhas){
     const c = linha.split('|').map(x=>x.trim());
-    const [protocolo, status, entrada, caso, tipo, envolvido, documento, sgd, laudoNum, entrega, peritoNome] = c;
+    /* o 12º campo, a unidade solicitante, passou a ser colhido em 27/11/2026.
+       Blocos antigos vêm com 11 campos e continuam valendo — só não trazem município. */
+    const [protocolo, status, entrada, caso, tipo, envolvido, documento, sgd, laudoNum, entrega, peritoNome, unidade] = c;
 
     if(!protocolo || !/^\d{4,10}$/.test(protocolo)){
       saida.push({ acao:'erro', protocolo:protocolo||'(vazio)', detalhe:'protocolo inválido' });
@@ -1605,17 +1644,25 @@ $('#btnAplicarSync').onclick = async ()=>{
 
     try{
       const { data: achadas, error: eBusca } = await sb.from('ocorrencias')
-        .select('id,status,caso,perito_id').eq('protocolo', protocolo).is('excluido_em', null).limit(1);
+        .select('id,status,caso,perito_id,municipio_id,orgao_acionamento_id').eq('protocolo', protocolo).is('excluido_em', null).limit(1);
       if(eBusca) throw eBusca;
       const oc = achadas && achadas[0];
 
       const st = statusDoGalileu(status);
       const entregaISO = dataBRparaISO(entrega);
 
+      const daUnidade = ondeFica(unidade);
+
       if(oc){
         const mudanca = {};
         if(st && st !== oc.status) mudanca.status = st;
         if(caso && !oc.caso) mudanca.caso = caso;
+        /* preenche o que falta, sem jamais passar por cima do que já está lá */
+        if(daUnidade.orgao_id && !oc.orgao_acionamento_id) mudanca.orgao_acionamento_id = daUnidade.orgao_id;
+        if(daUnidade.municipio_id && !oc.municipio_id){
+          mudanca.municipio_id = daUnidade.municipio_id;
+          mudanca.municipio_estimado = true;
+        }
         if(Object.keys(mudanca).length){
           const { error } = await sb.from('ocorrencias').update(mudanca).eq('id', oc.id);
           if(error) throw error;
@@ -1636,7 +1683,8 @@ $('#btnAplicarSync').onclick = async ()=>{
           saida.push({ acao:'atualizada', protocolo, detalhe: [
             mudanca.status ? 'status → '+mudanca.status : null,
             laudoNum ? 'laudo '+laudoNum : null,
-            entregaISO ? 'entregue' : null
+            entregaISO ? 'entregue' : null,
+            mudanca.municipio_id ? 'município ' + daUnidade.municipio_nome + ' (estimado)' : null
           ].filter(Boolean).join(', ') || 'sem mudança' });
           atualizadas++;
         } else { saida.push({ acao:'igual', protocolo, detalhe:'nada a mudar' }); iguais++; }
@@ -1659,10 +1707,15 @@ $('#btnAplicarSync').onclick = async ()=>{
           origem: 'galileu',
           nome_vitima: envolvido || null,
           tem_vitima: !!envolvido,
-          observacoes: documento || null,
+          observacoes: [documento, unidade].filter(Boolean).join(' · ') || null,
+          orgao_acionamento_id: daUnidade.orgao_id || null,
+          municipio_id: daUnidade.municipio_id || null,
+          municipio_estimado: !!daUnidade.municipio_id,
           acionamento_em: dataBRparaISO(entrada) ? dataBRparaISO(entrada)+'T00:00:00' : null,
           revisar: true,
-          revisar_motivo: 'Importada do Galileu — faltam município, local e horários'
+          revisar_motivo: daUnidade.municipio_id
+            ? 'Importada do Galileu — município estimado pelo órgão requisitante; faltam local e horários'
+            : 'Importada do Galileu — faltam município, local e horários'
         };
         const { data: ins, error } = await sb.from('ocorrencias').insert(novo).select('id').single();
         if(error) throw error;
@@ -1674,7 +1727,9 @@ $('#btnAplicarSync').onclick = async ()=>{
           await sb.from('laudos').insert(reg);
         }
         saida.push({ acao:'importada', protocolo,
-          detalhe: (t ? t.nome : (tipo||'tipo não reconhecido')) + (p ? '' : ' · perito não reconhecido') });
+          detalhe: (t ? t.nome : (tipo||'tipo não reconhecido'))
+            + (p ? '' : ' · perito não reconhecido')
+            + (daUnidade.municipio_nome ? ' · ' + daUnidade.municipio_nome + ' (estimado)' : '') });
         importadas++;
       }
     }catch(err){
@@ -1705,7 +1760,7 @@ $('#btnAplicarSync').onclick = async ()=>{
    que são justamente os tipos ativos. Exame que chega por requisição, sem
    o perito ir ao local, não tem lugar no mapa. */
 
-const mapa = { ano:'todos', tipo:'', dados:null, municipios:[], peritos:[] };
+const mapa = { ano:'todos', tipo:'', estimados:true, dados:null, municipios:[], peritos:[] };
 
 function escalaCor(n, maior){
   if(!n) return '#16263d';
@@ -1743,7 +1798,7 @@ async function carregarMapa(){
     const passo = 1000;
     for(let de = 0; ; de += passo){
       const { data, error } = await sb.from('ocorrencias')
-        .select('id,ano,municipio_id,perito_id,tipo_exame_id,latitude,longitude,origem')
+        .select('id,ano,municipio_id,municipio_estimado,perito_id,tipo_exame_id,latitude,longitude,origem')
         .is('excluido_em',null).eq('teste',false)
         .order('id').range(de, de + passo - 1);
       if(error){ recado('#recadoMapa','Não deu para ler as ocorrências: '+error.message); return; }
@@ -1784,7 +1839,8 @@ function filtradas(){
   return mapa.dados.filter(d=>
     d.externa &&
     (mapa.ano === 'todos' || d.ano === Number(mapa.ano)) &&
-    (!mapa.tipo || d.tipo_exame_id === Number(mapa.tipo))
+    (!mapa.tipo || d.tipo_exame_id === Number(mapa.tipo)) &&
+    (mapa.estimados || !d.municipio_estimado)
   );
 }
 
@@ -1794,8 +1850,9 @@ function desenhaMapa(){
   const nomePer = {}; mapa.peritos.forEach(p=>{ nomePer[p.id] = p.nome; });
 
   const porMun = {}, porPerito = {}, porTipo = {};
-  let semMunicipio = 0, laudosOk = 0;
+  let semMunicipio = 0, laudosOk = 0, estimados = 0;
   linhas.forEach(d=>{
+    if(d.municipio_estimado) estimados++;
     if(d.municipio_id) porMun[d.municipio_id] = (porMun[d.municipio_id]||0) + 1;
     else semMunicipio++;
     if(d.laudoOk) laudosOk++;
@@ -1858,6 +1915,7 @@ function desenhaMapa(){
     'A cor mostra quantas ocorrências externas houve em cada município — só as com deslocamento, do módulo de perícia externa. '
     + 'Exame que chega por requisição, sem ida ao local, não entra.<br>'
     + 'Alfinete só onde existe coordenada registrada no campo — nada é espalhado por dentro do município, para não inventar lugar.'
+    + (estimados ? `<br>${estimados} ${estimados===1?'tem município estimado':'têm município estimado'} pelo órgão requisitante — a delegacia que pediu nem sempre fica onde foi o fato.` : '')
     + (semMunicipio ? `<br><b style="color:var(--alerta)">${semMunicipio} ${semMunicipio===1?'ocorrência ficou de fora':'ocorrências ficaram de fora'} por não ter município.</b>` : '');
 
   /* ----- por perito ----- */
@@ -1928,6 +1986,7 @@ function centroDoMunicipio(d){
 
 $('#m_periodo').onchange = ()=>{ mapa.ano = $('#m_periodo').value; desenhaMapa(); };
 $('#m_tipo').onchange = ()=>{ mapa.tipo = $('#m_tipo').value; desenhaMapa(); };
+$('#m_estimados').onchange = ()=>{ mapa.estimados = $('#m_estimados').checked; desenhaMapa(); };
 
 /* ---------- instalar no celular ----------
    O Chrome e o Edge avisam por beforeinstallprompt e deixam instalar com um toque.
