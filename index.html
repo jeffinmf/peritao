@@ -558,6 +558,10 @@ nav button.ativo{color:var(--destaque)}
     <div id="telaCartorio" class="oculto">
       <h2>Cartório</h2>
       <p class="sub">Todas as ocorrências do núcleo · somente leitura</p>
+      <button type="button" class="botao" id="c_atualizar" style="margin-bottom:14px">
+        Atualizar base de dados
+      </button>
+      <div id="c_quando" style="font-size:11.5px;color:var(--suave);margin:-8px 0 14px"></div>
       <div class="recado" id="recadoCartorio"></div>
 
       <div class="cartao">
@@ -884,7 +888,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.28</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.29</p>
     </div>
   </main>
 
@@ -2216,6 +2220,7 @@ async function leBaseCartorio(){
   }
 
   cart.dados = linhas.map(l=>({ ...l, laudo: porOcorrencia[l.id] || null }));
+  cart.lidoEm = new Date();
   montaFiltrosCartorio();
   desenhaCartorio();
 }
@@ -2323,6 +2328,10 @@ function desenhaCartorio(){
       : 'Ver mais';
   }
 
+  $('#c_quando').textContent = cart.lidoEm
+    ? 'Base lida às ' + cart.lidoEm.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})
+      + ' de ' + cart.lidoEm.toLocaleDateString('pt-BR')
+    : '';
   $('#cartorioNota').textContent = 'Base de ' + cart.dados.length.toLocaleString('pt-BR')
     + ' ocorrências do núcleo, da planilha e das atualizações do Galileu. '
     + 'Tela só de leitura: correção de dado importado se faz no Galileu e volta no próximo Trazer.';
@@ -2347,6 +2356,25 @@ $('#c_rever').addEventListener('change', e=>{
 });
 
 $('#c_mais').onclick = ()=>{ cart.mostrando += CART_PAGINA; desenhaCartorio(); };
+
+/* Relê a base inteira. O que o Trazer acabou de aplicar não aparece sozinho: a
+   leitura fica em memória pela sessão toda, de propósito, senão cada filtro
+   custaria treze requisições. Daí o botão. */
+$('#c_atualizar').onclick = async ()=>{
+  if(cart.carregando) return;
+  const b = $('#c_atualizar');
+  b.disabled = true;
+  b.textContent = 'Atualizando…';
+  cart.dados = null;
+  cart.mostrando = CART_PAGINA;
+  $('#cartorioNumeros').innerHTML = '';
+  try{
+    await carregarCartorio();
+  }finally{
+    b.disabled = false;
+    b.textContent = 'Atualizar base de dados';
+  }
+};
 $('#c_limpar').onclick = ()=>{
   Object.assign(cart, { ano:'todos', perito:'', municipio:'', tipo:'', laudo:'', termo:'',
                         rever:false, mostrando:CART_PAGINA });
