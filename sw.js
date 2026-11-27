@@ -2,7 +2,7 @@
 // Guarda a casca do app para abrir sem rede. Dados nunca são cacheados:
 // as chamadas ao Supabase passam direto e, se falharem, o app põe na fila local.
 
-const CACHE = 'peritao-v37';
+const CACHE = 'peritao-v38';
 const CASCA = ['index.html', 'mapa-bico.js', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {

@@ -899,7 +899,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.36</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.37</p>
     </div>
   </main>
 
@@ -1748,9 +1748,19 @@ const STATUS_GALILEU = {
   'a receber':'a_receber',
   'aguardando':'a_receber',
   'pericia em andamento':'em_pericia',
+  'em pericia':'em_pericia',
   'em andamento':'em_pericia',
+  'enviada':'a_receber',
+  'criada':'a_receber',
   'cancelada':'cancelada'
 };
+
+/* O nome que vem junto do status é de quem fez AQUELE status, e no Galileu quem
+   cria e envia pode ser perito ou administrativo — só quem RECEBE é perito.
+   Então o nome só vale como perito do exame depois de recebido. Antes disso é
+   de quem lançou no cartório, e atribuir ali põe exame no nome de quem não
+   periciou. Confirmado por Jefferson em 27/11/2026 no histórico do exame. */
+const STATUS_COM_PERITO = new Set(['recebida','em_pericia','concluida']);
 
 function statusDoGalileu(txt){
   const t = semAcento(txt).replace(/[.:].*$/,'').trim();
@@ -1859,6 +1869,8 @@ $('#btnAplicarSync').onclick = async ()=>{
       const oc = achadas && achadas[0];
 
       const st = statusDoGalileu(status);
+      /* sem status reconhecido, não confio no nome: conservador de propósito */
+      const confia = !!st && STATUS_COM_PERITO.has(st);
       const entregaISO = dataBRparaISO(entrega);
 
       const daUnidade = ondeFica(unidade);
@@ -1871,6 +1883,16 @@ $('#btnAplicarSync').onclick = async ()=>{
         if(daUnidade.orgao_id && !oc.orgao_acionamento_id) mudanca.orgao_acionamento_id = daUnidade.orgao_id;
         /* a unidade solicitante diz onde o exame foi: é o local, não um chute */
         if(daUnidade.municipio_id && !oc.municipio_id) mudanca.municipio_id = daUnidade.municipio_id;
+        /* Conserta atribuição errada quando o exame já foi recebido: só entra se a
+           ocorrência está sem perito ou com alguém do apoio. Perito legítimo no
+           lugar jamais é trocado por colheita. */
+        if(confia){
+          const real = acharPorNome(peritos, peritoNome);
+          const atual = oc.perito_id ? peritos.find(x=>x.id === oc.perito_id) : null;
+          const errado = !oc.perito_id || (atual && atual.vinculo === 'apoio');
+          if(real && real.vinculo !== 'apoio' && errado && real.id !== oc.perito_id)
+            mudanca.perito_id = real.id;
+        }
         if(Object.keys(mudanca).length){
           const { error } = await sb.from('ocorrencias').update(mudanca).eq('id', oc.id);
           if(error) throw error;
@@ -1889,6 +1911,7 @@ $('#btnAplicarSync').onclick = async ()=>{
         }
         if(Object.keys(mudanca).length || temLaudo){
           saida.push({ acao:'atualizada', protocolo, detalhe: [
+            mudanca.perito_id ? 'perito → '+(peritos.find(x=>x.id===mudanca.perito_id)||{}).nome : null,
             mudanca.status ? 'status → '+mudanca.status : null,
             laudoNum ? 'laudo '+laudoNum : null,
             entregaISO ? 'entregue' : null,
@@ -1904,20 +1927,16 @@ $('#btnAplicarSync').onclick = async ()=>{
           ignoradas++; continue;
         }
         const t = acharPorNome(referencias.tipos, tipo);
-        let p = acharPorNome(peritos, peritoNome);
-        /* O "por {perito}" do Entrada de Cartório às vezes é quem LANÇOU o registro
-           no cartório, não quem fez o exame. Aconteceu com sete ocorrências de 2026
-           atribuídas à Lusinete, do apoio administrativo, sendo de outros peritos.
-           Nome de alguém do apoio não vira perito: a ocorrência entra sem perito e
-           com o motivo escrito, para alguém dizer de quem é. */
-        const doCartorio = p && p.vinculo === 'apoio';
-        if(doCartorio) p = null;
+        let p = confia ? acharPorNome(peritos, peritoNome) : null;
+        if(p && p.vinculo === 'apoio') p = null;   /* trava de reserva */
+        const doCartorio = !p;
         const novo = {
           protocolo, caso: caso || null,
           status: st || 'recebida',
           tipo_exame_id: t ? t.id : null,
           tipo_exame_bruto: t ? null : (tipo || null),
-          perito_id: doCartorio ? null : (p ? p.id : eu.id),
+          perito_id: p ? p.id : null,   /* nunca cai no perito logado: isso inflava a
+                                           estatística de quem rodou o Trazer */
           criado_por: eu.id,
           origem: 'galileu',
           nome_vitima: envolvido || null,
@@ -1927,8 +1946,10 @@ $('#btnAplicarSync').onclick = async ()=>{
           municipio_id: daUnidade.municipio_id || null,
           acionamento_em: dataBRparaISO(entrada) ? dataBRparaISO(entrada)+'T00:00:00' : null,
           revisar: true,
-          revisar_motivo: (doCartorio ? 'Importada do Galileu — SEM PERITO: o nome do '
-              + 'Galileu é de quem lançou no cartório. ' : 'Importada do Galileu — ')
+          revisar_motivo: 'Importada do Galileu — '
+            + (p ? '' : (confia ? 'SEM PERITO: nome não reconhecido. '
+                                : 'SEM PERITO: exame ainda não recebido, o nome do Galileu '
+                                  + 'é de quem lançou no cartório. '))
             + (daUnidade.municipio_id ? 'faltam local e horários'
                                       : 'faltam município, local e horários')
         };
@@ -1943,8 +1964,9 @@ $('#btnAplicarSync').onclick = async ()=>{
         }
         saida.push({ acao:'importada', protocolo,
           detalhe: (t ? t.nome : (tipo||'tipo não reconhecido'))
-            + (doCartorio ? ' · SEM PERITO (nome é do cartório)'
-                          : (p ? '' : ' · perito não reconhecido'))
+            + (doCartorio ? (confia ? ' · perito não reconhecido'
+                                    : ' · SEM PERITO (ainda não recebido — o nome é de quem lançou)')
+                          : '')
             + (daUnidade.municipio_nome ? ' · ' + daUnidade.municipio_nome : '') });
         importadas++;
       }
