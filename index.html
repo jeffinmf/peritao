@@ -1005,7 +1005,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.47</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.48</p>
     </div>
   </main>
 
@@ -1220,7 +1220,18 @@ async function carregaReferencias(){
   if(!referencias.tipos.length){
     try{ referencias = JSON.parse(localStorage.getItem('peritao-ref')) || referencias; }catch(e){}
   }
-  const rotuloOrgao = r => (r.sigla ? r.sigla+' — ' : '') + r.nome;
+  /* Quando o nome do Galileu diz mais que o nosso — o 9º BPM está cadastrado como
+     "Polícia Militar" —, ele vai entre parênteses. Senão o perito digita "9º BPM",
+     lê "Polícia Militar" e não sabe se acertou o batalhão. */
+  const rotuloOrgao = r => {
+    const base = (r.sigla ? r.sigla+' — ' : '') + r.nome;
+    /* Compara pelo primeiro trecho do nome do Galileu, não pelo nome inteiro: o do
+       9º BPM termina em "Batalhão de Polícia Militar", então qualquer teste de
+       continência acharia "Polícia Militar" no rótulo e esconderia o batalhão. */
+    const g = (r.nome_galileu || '').trim();
+    const chave = g.split(' - ')[0].trim();
+    return chave && !semAcento(base).includes(semAcento(chave)) ? base + ' (' + g + ')' : base;
+  };
   preenche('#f_tipo', referencias.tipos, r=>r.nome);
   preenche('#f_municipio', referencias.municipios, r=>r.nome);
   preenche('#f_orgao', referencias.orgaos, rotuloOrgao);
