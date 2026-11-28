@@ -1005,7 +1005,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.46</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.47</p>
     </div>
   </main>
 
@@ -1227,7 +1227,7 @@ async function carregaReferencias(){
   // Delegacia circunscricional: só polícia civil.
   /* não filtra mais por civil: em acidente com veículo oficial o responsável é o
      batalhão, e há caso que cai em corregedoria, promotoria ou vara. É caso a caso. */
-  preenche('#f_delegacia', referencias.orgaos, rotuloOrgao);
+  preenche('#f_delegacia', referencias.orgaos, rotuloOrgao, o=>o.nome_galileu);
 
   montaCombo('f_tipo', 'Digite parte do exame — ex.: acid, furto');
   montaCombo('f_municipio', 'Digite o município');
@@ -1240,7 +1240,9 @@ async function carregaReferencias(){
 const combos = {};
 
 function semAcento(s){
-  return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+  /* ª º ° caem junto: "9 bpm" tem que achar o "9º BPM", e o perito não digita a ordinal */
+  return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/[ªº°]/g,'').toLowerCase();
 }
 
 function montaCombo(idSelect, dica){
@@ -1274,7 +1276,8 @@ function montaCombo(idSelect, dica){
     ligaCombo(idSelect);
   }
 
-  c.opcoes = [...sel.options].filter(o=>o.value).map(o=>({ valor:o.value, texto:o.textContent }));
+  c.opcoes = [...sel.options].filter(o=>o.value)
+    .map(o=>({ valor:o.value, texto:o.textContent, busca:o.dataset.busca || '' }));
   sincronizaCombo(idSelect);
 }
 
@@ -1300,7 +1303,7 @@ function ligaCombo(idSelect){
        porque no rótulo as palavras ficam separadas por outras. */
     const palavras = semAcento(termo).trim().split(/\s+/).filter(Boolean);
     const achados = !palavras.length ? c.opcoes
-      : c.opcoes.filter(o => { const t = semAcento(o.texto);
+      : c.opcoes.filter(o => { const t = semAcento(o.texto + ' ' + o.busca);
                                return palavras.every(p => t.includes(p)); });
     c.marcado = -1;
     if(!achados.length){
@@ -1376,12 +1379,16 @@ document.addEventListener('pointerdown', e=>{
   });
 });
 
-function preenche(sel, lista, rotulo){
+/* `busca` é opcional: texto extra que o combo procura mas não mostra. Serve pra
+   achar órgão pelo nome do Galileu — o 9º BPM está rotulado "PM — Polícia Militar"
+   aqui, e é "9º BPM - Araguatins" que o perito tem na cabeça. */
+function preenche(sel, lista, rotulo, busca){
   const el = $(sel);
   el.innerHTML = '<option value="">Selecione…</option>';
   lista.forEach(r=>{
     const o = document.createElement('option');
     o.value = r.id; o.textContent = rotulo(r);
+    if(busca){ const extra = busca(r); if(extra) o.dataset.busca = extra; }
     el.appendChild(o);
   });
 }
