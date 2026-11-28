@@ -515,7 +515,7 @@ nav button.ativo{color:var(--destaque)}
             <select id="f_orgao"><option value="">Selecione…</option></select>
           </label>
           <label class="campo">
-            <span>Delegacia responsável *</span>
+            <span>Responsável pelo laudo *</span>
             <select id="f_delegacia" required><option value="">Selecione…</option></select>
           </label>
           <div class="linha">
@@ -1005,7 +1005,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.44</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.45</p>
     </div>
   </main>
 
@@ -1207,7 +1207,11 @@ async function carregaReferencias(){
     sb.from('tipos_exame').select('id,nome').eq('ativo',true)
       .order('usos',{ascending:false}).order('nome'),
     sb.from('municipios').select('id,nome').eq('ativo',true).order('nome'),
-    sb.from('orgaos').select('id,sigla,nome,tipo,nome_galileu').eq('ativo',true).order('nome'),
+    /* a lista inteira do Galileu, 561 órgãos, por uso real: os do núcleo sobem e o
+       resto se acha digitando. Antes eram 27, e por isso não havia como registrar
+       acidente com viatura, em que o responsável é o batalhão e não uma delegacia. */
+    sb.from('orgaos').select('id,sigla,nome,tipo,nome_galileu').eq('ativo',true)
+      .order('usos',{ascending:false}).order('nome'),
     sb.from('municipios').select('id,nome').order('nome')
   ]);
   referencias = { tipos:t.data||[], municipios:m.data||[], orgaos:o.data||[],
@@ -1221,12 +1225,14 @@ async function carregaReferencias(){
   preenche('#f_municipio', referencias.municipios, r=>r.nome);
   preenche('#f_orgao', referencias.orgaos, rotuloOrgao);
   // Delegacia circunscricional: só polícia civil.
-  preenche('#f_delegacia', referencias.orgaos.filter(r=>r.tipo==='civil'), rotuloOrgao);
+  /* não filtra mais por civil: em acidente com veículo oficial o responsável é o
+     batalhão, e há caso que cai em corregedoria, promotoria ou vara. É caso a caso. */
+  preenche('#f_delegacia', referencias.orgaos, rotuloOrgao);
 
   montaCombo('f_tipo', 'Digite parte do exame — ex.: acid, furto');
   montaCombo('f_municipio', 'Digite o município');
   montaCombo('f_orgao', 'Digite a delegacia ou órgão');
-  montaCombo('f_delegacia', 'Digite a delegacia');
+  montaCombo('f_delegacia', 'Digite a delegacia, o batalhão ou o órgão');
 }
 /* ---------- escolha com filtro por digitação ----------
    Mantém o <select> original no DOM, escondido, para que todo o resto do
@@ -1431,7 +1437,7 @@ $('#btnSalvar').onclick = async () => {
   if(!$('#f_tipo').value || !$('#f_municipio').value)
     return recado('#recadoForm','Tipo de exame e município são obrigatórios.');
   if(!$('#f_delegacia').value)
-    return recado('#recadoForm','Informe a delegacia responsável pela circunscrição. O Galileu exige.');
+    return recado('#recadoForm','Informe quem responde pelo laudo — delegacia, batalhão ou outro órgão. O Galileu exige.');
 
   const chegada = $('#f_atendimento').value, saida = $('#f_liberacao').value;
   if(!chegada || !saida)
@@ -1788,7 +1794,7 @@ function fichaGalileu(o){
   const falta = [];
   if(!o.tipos_exame?.nome) falta.push('tipo de exame');
   if(!o.orgaos_acionamento?.nome_galileu) falta.push('órgão de acionamento sem correspondência no Galileu');
-  if(!o.orgaos_delegacia?.nome_galileu) falta.push('delegacia responsável sem correspondência no Galileu');
+  if(!o.orgaos_delegacia?.nome_galileu) falta.push('responsável pelo laudo sem correspondência no Galileu');
   if(!o.municipios?.nome) falta.push('município');
   if(!o.atendimento_em) falta.push('hora de chegada');
   if(!o.liberacao_em) falta.push('hora de saída');
