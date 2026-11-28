@@ -1005,7 +1005,7 @@ nav button.ativo{color:var(--destaque)}
 
       <div style="height:10px"></div>
       <button class="botao secundario" id="btnSair" style="border-color:var(--erro);color:#ffc8bf">Sair</button>
-      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.45</p>
+      <p style="color:var(--suave);font-size:12px;text-align:center;margin-top:22px">Peritão · versão 1.46</p>
     </div>
   </main>
 
@@ -1295,9 +1295,13 @@ function ligaCombo(idSelect){
   const c = combos[idSelect];
 
   function desenha(termo){
-    const t = semAcento(termo).trim();
-    const achados = !t ? c.opcoes
-      : c.opcoes.filter(o => semAcento(o.texto).includes(t));
+    /* Cada palavra em qualquer ordem, em vez de substring contígua. Com 27 órgãos
+       dava na mesma; com 561 não: "bpm araguatins" e "9º bpm" não achavam nada,
+       porque no rótulo as palavras ficam separadas por outras. */
+    const palavras = semAcento(termo).trim().split(/\s+/).filter(Boolean);
+    const achados = !palavras.length ? c.opcoes
+      : c.opcoes.filter(o => { const t = semAcento(o.texto);
+                               return palavras.every(p => t.includes(p)); });
     c.marcado = -1;
     if(!achados.length){
       c.lista.innerHTML = '<div class="combo-vazio">Nada encontrado.</div>';
